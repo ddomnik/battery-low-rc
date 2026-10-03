@@ -4,34 +4,36 @@ extends Node3D
 ## FOLLOW: the yaw smoothly swings behind the car's nose, so screen-up ≈ the car's forward.
 ## FIXED: the yaw stays at fixed_yaw_deg (0 = north-up). This is purely local presentation; gameplay never reads it.
 
-enum Mode { FOLLOW, FIXED }
+enum Mode {FOLLOW, FIXED}
 
 @export var mode: Mode = Mode.FOLLOW
-@export var pitch_deg: float = 45.0           # pitch, distance and fov apply live (tune them in the Remote tree)
-@export var fixed_yaw_deg: float = 0.0        # FIXED mode yaw; 0 = north-up
+@export var pitch_deg: float = 45.0 # pitch, distance and fov apply live (tune them in the Remote tree)
+@export var fixed_yaw_deg: float = 0.0 # FIXED mode yaw; 0 = north-up
 @export var yaw_follow_sharpness: float = 3.0 # 1/s; FOLLOW mode, lower = lazier rotation
-@export var follow_min_up_dot: float = 0.5    # heading is only followed while the car is roughly upright
-@export var distance: float = 50.0            # along the view direction; height above the focus = sin(pitch) · distance
-@export var view_offset: float = 3.5           # m; shifts the view up so the car sits below screen center (more view ahead)
-@export var fov_deg: float = 35.0             # narrow FOV from far away ≈ near-orthographic readability
-@export var follow_sharpness: float = 3.5     # 1/s; lower = lazier
-@export var height_sharpness: float = 1.5     # vertical follow is slower so bumps don't bob the view
+@export var follow_min_up_dot: float = 0.5 # heading is only followed while the car is roughly upright
+@export var distance: float = 50.0 # along the view direction; height above the focus = sin(pitch) · distance
+@export var view_offset: float = -1.0 # m; negative: car sits above screen center (more view behind), positive: below
+@export var fov_deg: float = 35.0 # narrow FOV from far away ≈ near-orthographic readability
+@export var follow_sharpness: float = 3.5 # 1/s; lower = lazier
+@export var height_sharpness: float = 1.5 # vertical follow is slower so bumps don't bob the view
 @export var velocity_lookahead_time: float = 0.25
 @export var max_velocity_lookahead: float = 5.0
 @export var aim_lookahead_fraction: float = 0.25
 @export var max_aim_lookahead: float = 6.0
-@export var lookahead_sharpness: float = 2.5
+@export var lookahead_sharpness: float = 2.5 # velocity look-ahead (lazy)
+@export var aim_lookahead_sharpness: float = 5.0 # mouse look-ahead: applied on top of the lazy follow, so it reacts fast
 @export var shake_decay: float = 1.6
 @export var shake_max_offset: float = 0.6
 @export var shake_noise_speed: float = 60.0
 
 var target: Car = null
-var aim_point: Vector3 = Vector3.ZERO   # written by PlayerInput
+var aim_point: Vector3 = Vector3.ZERO # written by PlayerInput
 var has_aim: bool = false
 var camera: Camera3D = null
 
 var _focus: Vector3 = Vector3.ZERO
 var _lookahead: Vector3 = Vector3.ZERO
+var _aim_lookahead: Vector3 = Vector3.ZERO
 var _yaw: float = 0.0
 var _goal_yaw: float = 0.0
 var _trauma: float = 0.0
@@ -76,8 +78,9 @@ func snap_to_target() -> void:
 	if target != null:
 		_focus = target.global_position
 		_lookahead = Vector3.ZERO
+		_aim_lookahead = Vector3.ZERO
 		global_position = _focus
-		_update_goal_yaw(target.global_transform, true)   # freshly spawned cars are not grounded yet
+		_update_goal_yaw(target.global_transform, true) # freshly spawned cars are not grounded yet
 		_yaw = _goal_yaw
 		rotation.y = _yaw
 
@@ -97,16 +100,18 @@ func _process(delta: float) -> void:
 	var vel := target.linear_velocity
 	vel.y = 0.0
 	var wanted := (vel * velocity_lookahead_time).limit_length(max_velocity_lookahead)
+	_lookahead = _lookahead.lerp(wanted, 1.0 - exp(-lookahead_sharpness * delta))
+	var wanted_aim := Vector3.ZERO
 	if has_aim:
 		var to_aim := aim_point - car_pos
 		to_aim.y = 0.0
-		wanted += (to_aim * aim_lookahead_fraction).limit_length(max_aim_lookahead)
-	_lookahead = _lookahead.lerp(wanted, 1.0 - exp(-lookahead_sharpness * delta))
+		wanted_aim = (to_aim * aim_lookahead_fraction).limit_length(max_aim_lookahead)
+	_aim_lookahead = _aim_lookahead.lerp(wanted_aim, 1.0 - exp(-aim_lookahead_sharpness * delta))
 	var goal := car_pos + _lookahead
 	var xz := Vector2(_focus.x, _focus.z).lerp(Vector2(goal.x, goal.z), 1.0 - exp(-follow_sharpness * delta))
 	var y := lerpf(_focus.y, goal.y, 1.0 - exp(-height_sharpness * delta))
 	_focus = Vector3(xz.x, y, xz.y)
-	global_position = _focus
+	global_position = _focus + _aim_lookahead
 
 	_time += delta
 	_trauma = maxf(_trauma - shake_decay * delta, 0.0)
