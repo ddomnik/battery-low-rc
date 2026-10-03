@@ -2,16 +2,19 @@ class_name ArenaBuilder
 ## Static helpers that build blockout geometry in code. All bodies: layer WORLD, mask 0.
 
 const ROUGHNESS := 0.8
+const CUTOUT_SHADER: Shader = preload("res://arena/shaders/cutout.gdshader")
 
-static var _materials: Dictionary = {}   # Color → StandardMaterial3D, shared across matches
+static var _materials: Dictionary = {}   # Color → ShaderMaterial, shared across matches
 
-## One cached material per color.
-static func material(color: Color) -> StandardMaterial3D:
-	var m: StandardMaterial3D = _materials.get(color)
+## One cached material per color. Uses the occlusion-cutout shader, so these objects open up when they stand
+## between the camera and the local car (§10.1). The floor uses its own checker material and is never cut.
+static func material(color: Color) -> ShaderMaterial:
+	var m: ShaderMaterial = _materials.get(color)
 	if m == null:
-		m = StandardMaterial3D.new()
-		m.albedo_color = color
-		m.roughness = ROUGHNESS
+		m = ShaderMaterial.new()
+		m.shader = CUTOUT_SHADER
+		m.set_shader_parameter("albedo", color)
+		m.set_shader_parameter("roughness", ROUGHNESS)
 		_materials[color] = m
 	return m
 

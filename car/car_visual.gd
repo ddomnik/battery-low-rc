@@ -9,55 +9,57 @@ const PLAYER_MODELS: Array[String] = ["race", "race-future", "sedan-sports"]
 ## Bots cycle through these so cars are easy to tell apart (all have exactly four wheel nodes).
 const BOT_MODELS: Array[String] = ["race-future", "sedan-sports", "hatchback-sports", "police", "race"]
 
-const STEER_VISUAL_ANGLE := 0.5        # front-wheel turn (rad) at full steer
+const STEER_VISUAL_ANGLE := 0.5 # front-wheel turn (rad) at full steer
 const STEER_SHARPNESS := 12.0
 const RING_INNER := 1.25
 const RING_OUTER := 1.45
 const RING_FLATTEN := 0.05
-const RING_LIFT := 0.03                # above the ground at rest
+const RING_LIFT := 0.03 # above the ground at rest
 const LOCAL_RING_LIGHTEN := 0.3
 const LOCAL_PULSE_SPEED := 3.0
 const LOCAL_PULSE_DEPTH := 0.2
-const LABEL_HEIGHT := 1.6
+const LABEL_HEIGHT := -1.8
 const LABEL_FONT_SIZE := 32
 const LABEL_OUTLINE_SIZE := 10
-const LABEL_PIXEL_SIZE := 0.0008       # fixed_size labels: world units per pixel at 1 m from the camera
+const LABEL_PIXEL_SIZE := 0.0004 # fixed_size labels: world units per pixel at 1 m from the camera
 const TURRET_BASE_RADIUS := 0.22
 const TURRET_BASE_HEIGHT := 0.15
 const BARREL_SIZE := Vector3(0.12, 0.12, 0.6)
 const TURRET_SHARPNESS := 12.0
-const DEFAULT_ROOF_Y := 0.25           # turret height when no model is loaded (chassis box top)
+const DEFAULT_ROOF_Y := 0.25 # turret height when no model is loaded (chassis box top)
 const SMOKE_COLOR := Color(0.9, 0.9, 0.9, 0.55)
 const SMOKE_SIZE := 0.7
-const SMOKE_LIFT := 0.1               # above the ground under the rear wheels
+const SMOKE_LIFT := 0.1 # above the ground under the rear wheels
 const EXHAUST_SHADER: Shader = preload("res://car/exhaust.gdshader")
-const FLAME_COLOR := Color(0.55, 0.8, 1.0)          # blue sparks streaming out of the exhaust
+const XRAY_SHADER: Shader = preload("res://car/xray.gdshader")
+const XRAY_ALPHA := 0.55
+const FLAME_COLOR := Color(0.55, 0.8, 1.0) # blue sparks streaming out of the exhaust
 const FLAME_FADE_COLOR := Color(0.15, 0.3, 1.0, 0.0)
 const FLAME_SIZE := 0.3
-const FLAME_OFFSET := Vector3(0.0, -0.15, 1.05)   # rear center, car-local
-const EXHAUST_OUTER := Vector2(0.24, 1.4)         # cone base radius, length
+const FLAME_OFFSET := Vector3(0.0, -0.15, 1.05) # rear center, car-local
+const EXHAUST_OUTER := Vector2(0.24, 1.4) # cone base radius, length
 const EXHAUST_OUTER_COLOR := Color(0.25, 0.5, 1.0)
 const EXHAUST_CORE := Vector2(0.11, 0.8)
 const EXHAUST_CORE_COLOR := Color(0.7, 0.9, 1.0)
-const EXHAUST_FADE_SPEED := 10.0                  # cone grows / shrinks this fast (per second) when boost starts / stops
+const EXHAUST_FADE_SPEED := 10.0 # cone grows / shrinks this fast (per second) when boost starts / stops
 const EXHAUST_FLICKER_SPEED := 37.0
 const EXHAUST_FLICKER := 0.15
 const SHADOW_SIZE := Vector3(1.6, 12.0, 2.4)
-const ENGINE_PITCH_IDLE := 0.8        # engine pitch at standstill …
-const ENGINE_PITCH_TOP := 1.6         # … and at boost top speed
-const AIR_PITCH_EXTRA := 0.25         # the airborne motor revs a bit higher on top
-const ENGINE_DB_LOCAL := -6.0         # your car
-const ENGINE_DB_OTHER := -15.0        # everyone else (ten engines at once get loud)
-const ENGINE_FADE := 8.0              # 1/s; ground ↔ air engine cross-fade
+const ENGINE_PITCH_IDLE := 0.8 # engine pitch at standstill …
+const ENGINE_PITCH_TOP := 1.6 # … and at boost top speed
+const AIR_PITCH_EXTRA := 0.25 # the airborne motor revs a bit higher on top
+const ENGINE_DB_LOCAL := -6.0 # your car
+const ENGINE_DB_OTHER := -15.0 # everyone else (ten engines at once get loud)
+const ENGINE_FADE := 8.0 # 1/s; ground ↔ air engine cross-fade
 const BOOST_DB := -4.0
 const DRIFT_DB := -8.0
-const SOUND_UNIT_SIZE := 30.0         # the camera listens from ~50 m away
+const SOUND_UNIT_SIZE := 30.0 # the camera listens from ~50 m away
 const SILENT_DB := -60.0
-const SHADOW_TOP := 2.0                # the decal box spans 2 m above to 10 m below the car
+const SHADOW_TOP := 2.0 # the decal box spans 2 m above to 10 m below the car
 const SHADOW_ALPHA := 0.55
 const SHADOW_TEXTURE_SIZE := 64
 
-@export var model_yaw_deg: float = 180.0   # glTF models face +Z, our forward is −Z
+@export var model_yaw_deg: float = 180.0 # glTF models face +Z, our forward is −Z
 @export var visual_length: float = 2.0
 
 var car: Car = null
@@ -76,11 +78,12 @@ var _pivots: Array[Node3D] = []
 var _pivot_base: Array[Vector3] = []
 var _wheel_spin_sign: float = 1.0
 var _visual_wheel_radius: float = 0.3
-var _rest_spring: float = 0.0          # rest length minus sag
+var _rest_spring: float = 0.0 # rest length minus sag
 var _ring_mat: StandardMaterial3D = null
 var _base_color: Color = Color.WHITE
 var _is_local: bool = false
 var _shadow: Decal = null
+var _label: Label3D = null
 var _smoke: Array[GPUParticles3D] = []
 var _flame: GPUParticles3D = null
 var _exhaust: Node3D = null
@@ -90,7 +93,7 @@ var _engine: AudioStreamPlayer3D = null
 var _engine_air: AudioStreamPlayer3D = null
 var _boost_sound: AudioStreamPlayer3D = null
 var _drift_sound: AudioStreamPlayer3D = null
-var _air_mix: float = 0.0             # 0 = ground engine, 1 = airborne engine
+var _air_mix: float = 0.0 # 0 = ground engine, 1 = airborne engine
 var _engine_db: float = ENGINE_DB_OTHER
 var _time: float = 0.0
 
@@ -152,6 +155,8 @@ func _process(delta: float) -> void:
 	if _flame != null and _flame.emitting != car.is_boosting:
 		_flame.emitting = car.is_boosting
 	_update_exhaust(delta)
+	if _label != null:
+		_label.visible = Settings.show_name_labels
 	_update_sounds(delta)
 	if _is_local and _ring_mat != null:
 		var c := _base_color.lightened(LOCAL_RING_LIGHTEN)
@@ -172,9 +177,13 @@ func _setup_model(model_scene: PackedScene, ground_y: float) -> float:
 		push_warning("CarVisual: model has no meshes")
 		return DEFAULT_ROOF_Y
 	var aabb := _in_model(meshes[0]) * meshes[0].get_aabb()
+	var xray := ShaderMaterial.new()   # silhouette in the player color where the car is hidden (§10.1)
+	xray.shader = XRAY_SHADER
+	xray.set_shader_parameter("color", Color(_base_color, XRAY_ALPHA))
 	for mi in meshes:
 		aabb = aabb.merge(_in_model(mi) * mi.get_aabb())
 		mi.layers = Layers.RENDER_CARS
+		mi.material_overlay = xray
 
 	var rot := Basis(Vector3.UP, deg_to_rad(model_yaw_deg))
 	var rotated := Transform3D(rot, Vector3.ZERO) * aabb
@@ -299,6 +308,7 @@ func _build_ring(ground_y: float) -> void:
 
 func _build_label() -> void:
 	var label := Label3D.new()
+	_label = label
 	label.name = "NameLabel"
 	label.text = car.display_name if car != null else ""
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -338,7 +348,7 @@ func _build_shadow() -> void:
 # --- Particles: drift smoke at the rear wheels, boost flame at the rear --------------------------
 
 func _build_particles(tuning: CarTuning, ground_y: float) -> void:
-	for i: int in [2, 3]:   # rear-left, rear-right
+	for i: int in [2, 3]: # rear-left, rear-right
 		var m: Vector3 = tuning.wheel_mounts[i]
 		var smoke_ramp := Gradient.new()
 		smoke_ramp.set_color(0, SMOKE_COLOR)
@@ -349,7 +359,7 @@ func _build_particles(tuning: CarTuning, ground_y: float) -> void:
 		pm.spread = 40.0
 		pm.initial_velocity_min = 0.4
 		pm.initial_velocity_max = 1.2
-		pm.gravity = Vector3(0.0, 0.6, 0.0)   # drifts upward
+		pm.gravity = Vector3(0.0, 0.6, 0.0) # drifts upward
 		pm.scale_min = 0.6
 		pm.scale_max = 1.2
 		smoke.amount = 32
@@ -361,7 +371,7 @@ func _build_particles(tuning: CarTuning, ground_y: float) -> void:
 	flame_ramp.set_color(1, FLAME_FADE_COLOR)
 	_flame = _particles("BoostFlame", FLAME_OFFSET, FLAME_SIZE, flame_ramp, true)
 	var fm := _flame.process_material as ParticleProcessMaterial
-	fm.direction = Vector3.BACK          # out of the rear (+Z car-local)
+	fm.direction = Vector3.BACK # out of the rear (+Z car-local)
 	fm.spread = 10.0
 	fm.initial_velocity_min = 3.0
 	fm.initial_velocity_max = 6.0
@@ -384,7 +394,7 @@ func _build_exhaust() -> void:
 
 func _add_cone(size: Vector2, color: Color) -> void:
 	var cone := CylinderMesh.new()
-	cone.top_radius = 0.0          # tip, ends up pointing out of the rear
+	cone.top_radius = 0.0 # tip, ends up pointing out of the rear
 	cone.bottom_radius = size.x
 	cone.height = size.y
 	cone.cap_top = false
@@ -399,8 +409,8 @@ func _add_cone(size: Vector2, color: Color) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = cone
 	mi.material_override = mat
-	mi.rotation.x = PI * 0.5       # mesh +Y (tip) → car +Z (backwards)
-	mi.position.z = size.y * 0.5   # base at the nozzle
+	mi.rotation.x = PI * 0.5 # mesh +Y (tip) → car +Z (backwards)
+	mi.position.z = size.y * 0.5 # base at the nozzle
 	mi.layers = Layers.RENDER_CARS
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_exhaust.add_child(mi)

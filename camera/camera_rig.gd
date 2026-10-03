@@ -25,6 +25,9 @@ enum Mode {FOLLOW, FIXED}
 @export var shake_decay: float = 1.6
 @export var shake_max_offset: float = 0.6
 @export var shake_noise_speed: float = 60.0
+@export var cutout_radius: float = 3.5        # occlusion cutout around the camera→car line (m); 0 = off
+@export var cutout_transparency: float = 0.7  # how see-through the cut area gets (0..1)
+@export var cutout_fade_speed: float = 8.0    # 1/s; fade in / out when the car gets hidden / visible
 
 var target: Car = null
 var aim_point: Vector3 = Vector3.ZERO # written by PlayerInput
@@ -39,6 +42,8 @@ var _goal_yaw: float = 0.0
 var _trauma: float = 0.0
 var _noise: FastNoiseLite = FastNoiseLite.new()
 var _time: float = 0.0
+var _car_hidden: bool = false
+var _cutout_amount: float = 0.0       # 0..1, faded toward _car_hidden
 
 static func mode_label(m: Mode) -> String:
 	return "Follow" if m == Mode.FOLLOW else "Classic (fixed)"
@@ -84,6 +89,24 @@ func snap_to_target() -> void:
 		_yaw = _goal_yaw
 		rotation.y = _yaw
 
+func _exit_tree() -> void:
+	RenderingServer.global_shader_parameter_set(&"cutout_strength", 0.0)   # no match → nothing is cut
+
+## Is the car hidden behind world geometry? Rays from the camera to the car's center, nose and tail
+## (physics queries belong in physics ticks; _process fades the cutout from the result).
+func _physics_process(_delta: float) -> void:
+	_car_hidden = false
+	if target == null or not is_instance_valid(target) or camera == null:
+		return
+	var space := get_world_3d().direct_space_state
+	var from := camera.global_position
+	var xf := target.global_transform
+	for local: Vector3 in [Vector3(0.0, 0.4, 0.0), Vector3(0.0, 0.2, -0.9), Vector3(0.0, 0.2, 0.9)]:
+		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(from, xf * local, Layers.WORLD))
+		if not hit.is_empty():
+			_car_hidden = true
+			return
+
 func add_trauma(amount: float) -> void:
 	_trauma = clampf(_trauma + amount, 0.0, 1.0)
 
@@ -112,6 +135,10 @@ func _process(delta: float) -> void:
 	var y := lerpf(_focus.y, goal.y, 1.0 - exp(-height_sharpness * delta))
 	_focus = Vector3(xz.x, y, xz.y)
 	global_position = _focus + _aim_lookahead
+	_cutout_amount = move_toward(_cutout_amount, 1.0 if _car_hidden else 0.0, delta * cutout_fade_speed)
+	RenderingServer.global_shader_parameter_set(&"focus_car_pos", car_pos)
+	RenderingServer.global_shader_parameter_set(&"cutout_radius", cutout_radius)
+	RenderingServer.global_shader_parameter_set(&"cutout_strength", cutout_transparency * _cutout_amount)
 
 	_time += delta
 	_trauma = maxf(_trauma - shake_decay * delta, 0.0)

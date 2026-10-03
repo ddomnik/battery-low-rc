@@ -16,6 +16,7 @@ var current_config: MatchConfig = null
 var _main: Main = null
 
 func _ready() -> void:
+	_register_shader_globals()
 	audio = AudioDirector.new()
 	audio.name = "Audio"
 	add_child(audio)
@@ -52,6 +53,13 @@ func _show_toast(text: String) -> void:
 	tw.tween_interval(TOAST_TIME)
 	tw.tween_property(label, "modulate:a", 0.0, TOAST_FADE)
 	tw.tween_callback(layer.queue_free)
+
+## Global shader parameters for the occlusion cutout (§10.1). Registered in code (not project.godot) before any
+## arena material compiles; CameraRig updates them every frame.
+func _register_shader_globals() -> void:
+	RenderingServer.global_shader_parameter_add(&"focus_car_pos", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3.ZERO)
+	RenderingServer.global_shader_parameter_add(&"cutout_radius", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
+	RenderingServer.global_shader_parameter_add(&"cutout_strength", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 
 func _apply_window_mode() -> void:
 	if DisplayServer.get_name() == "headless":
