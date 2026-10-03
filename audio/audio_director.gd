@@ -22,9 +22,10 @@ var _track_index: int = 0
 
 func _ready() -> void:
 	enabled = AudioServer.get_driver_name() != "Dummy"
-	_ensure_bus(BUS_MUSIC, MUSIC_DB)
-	_ensure_bus(BUS_SFX, SFX_DB)
-	_ensure_bus(BUS_ENGINE, ENGINE_DB)
+	_ensure_bus(BUS_MUSIC, &"Master")
+	_ensure_bus(BUS_SFX, &"Master")
+	_ensure_bus(BUS_ENGINE, BUS_SFX)   # engines follow the effects slider
+	apply_volumes()
 	_music = AudioStreamPlayer.new()
 	_music.name = "Music"
 	_music.bus = BUS_MUSIC
@@ -67,6 +68,17 @@ func play_at(kind: StringName, pos: Vector3, volume_db: float = 0.0, pitch: floa
 	p.global_position = pos
 	p.play()
 
+## Bus volumes from the Settings sliders (0..1 linear) on top of the base mix.
+func apply_volumes() -> void:
+	_set_volume(BUS_MUSIC, MUSIC_DB, Settings.music_volume)
+	_set_volume(BUS_SFX, SFX_DB, Settings.sfx_volume)
+	_set_volume(BUS_ENGINE, ENGINE_DB, 1.0)
+
+func _set_volume(bus_name: StringName, base_db: float, linear: float) -> void:
+	var i := AudioServer.get_bus_index(bus_name)
+	AudioServer.set_bus_mute(i, linear <= 0.0)
+	AudioServer.set_bus_volume_db(i, base_db + linear_to_db(maxf(linear, 0.0001)))
+
 func _play_next_track() -> void:
 	if _tracks.is_empty():
 		return
@@ -74,9 +86,8 @@ func _play_next_track() -> void:
 	_track_index += 1
 	_music.play()
 
-func _ensure_bus(bus_name: StringName, volume_db: float) -> void:
+func _ensure_bus(bus_name: StringName, send_to: StringName) -> void:
 	if AudioServer.get_bus_index(bus_name) == -1:
 		AudioServer.add_bus()
 		AudioServer.set_bus_name(AudioServer.bus_count - 1, bus_name)
-		AudioServer.set_bus_send(AudioServer.bus_count - 1, &"Master")
-	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(bus_name), volume_db)
+	AudioServer.set_bus_send(AudioServer.get_bus_index(bus_name), send_to)

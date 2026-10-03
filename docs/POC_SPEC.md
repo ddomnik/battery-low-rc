@@ -39,6 +39,14 @@ Decided by the developer during playtests. Where these conflict with later secti
 - §5 "camera yaw is fixed at 0" applies to the Classic camera only.
 - F11 toggles fullscreen anywhere (menus and matches); persisted as `Settings.fullscreen`.
 
+**Occlusion cutout (§10.1, done)**
+- Global shader parameters are registered in code (`Game._register_shader_globals`), not in project.godot.
+- The cutout only removes geometry above the bottom of the local car (`focus_car_pos.y − 0.3`), so the surface the car drives on (table top, ramps) never gets a hole. `CameraRig.cutout_radius` = 3.5 m.
+- X-ray silhouettes are a `material_overlay` on the car model meshes (`car/xray.gdshader`); fragments within 2.2 m of the scene depth are discarded, so a car's own parts never trigger it.
+
+**Settings menu**
+- Reachable from the main menu and the in-game menu: music and effects volume (effects include engines), "Show name labels", and remapping of all player actions (two slots each; a key moves away from any other action it was bound to). Saved in `user://settings.cfg`.
+
 **Scoring (M6)**
 - Knockout: when a car falls off the map (below `kill_y`), the car that last bumped or blasted it within 6 s gets +10 points and a "KNOCKOUT!" popup. Falling off alone scores nothing. Every car (bots included) then respawns at the spawn point farthest from the others.
 

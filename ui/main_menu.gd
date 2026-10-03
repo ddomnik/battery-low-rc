@@ -32,6 +32,7 @@ func _ready() -> void:
 	camera.item_selected.connect(_on_camera_selected)
 	UiKit.row(box, "Camera").add_child(camera)
 
+	UiKit.button(box, "Settings").pressed.connect(func() -> void: add_child(SettingsMenu.new()))
 	UiKit.button(box, "Quit").pressed.connect(Game.quit_app)
 	play.grab_focus()
 

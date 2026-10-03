@@ -117,11 +117,104 @@ func _run() -> void:
 	await _frames(5)
 	_check("orphan nodes back to baseline (%d)" % baseline, _orphans(), _orphans() == baseline)
 
+	await _settings_menu()
+
 	Settings.bot_count = saved_bots
 	Settings.camera_mode = saved_camera
 	Settings.save_settings()
 	print("\n%s: %d failing check(s)" % ["FAIL" if _failures > 0 else "PASS", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
+
+func _settings_menu() -> void:
+	_header("Settings menu")
+	var saved := [Settings.music_volume, Settings.sfx_volume, Settings.show_name_labels, Settings.key_bindings.duplicate(true)]
+	_click(_main.ui_root, "Settings")
+	await _frames(3)
+	var menu := _find(_main.ui_root, "Control") as Control
+	var settings: SettingsMenu = null
+	for n in _main.ui_root.find_children("*", "SettingsMenu", true, false):
+		settings = n as SettingsMenu
+	_check("Settings opens from the main menu", settings != null, settings != null)
+	if settings == null or menu == null:
+		return
+	var sliders := settings.find_children("*", "HSlider", true, false)
+	(sliders[0] as HSlider).value = 50.0
+	(sliders[1] as HSlider).value = 25.0
+	var music_db := AudioServer.get_bus_volume_db(AudioServer.get_bus_index(AudioDirector.BUS_MUSIC))
+	_check("music slider sets the Music bus (50 % → base −6 dB)", music_db,
+		is_equal_approx(Settings.music_volume, 0.5) and absf(music_db - (AudioDirector.MUSIC_DB + linear_to_db(0.5))) < 0.01)
+	_check("effects slider sets the SFX bus (engines follow it)", Settings.sfx_volume,
+		is_equal_approx(Settings.sfx_volume, 0.25) and AudioServer.get_bus_send(AudioServer.get_bus_index(AudioDirector.BUS_ENGINE)) == AudioDirector.BUS_SFX)
+	var toggle := settings.find_children("*", "CheckButton", true, false)[0] as CheckButton
+	toggle.button_pressed = false
+	_check("HUD toggle hides name labels", Settings.show_name_labels, not Settings.show_name_labels)
+
+	_click_key_button(settings, "W")   # Accelerate, primary key
+	await _frames(2)
+	_key(KEY_I)
+	await _frames(3)
+	_check("Accelerate remapped W → I (arrow key kept)", _keys("move_up"), _keys("move_up") == "I, Up")
+	_click_key_button(settings, "S")   # Brake, primary key
+	await _frames(2)
+	_key(KEY_I)
+	await _frames(3)
+	_check("I given to Brake is removed from Accelerate", "%s | %s" % [_keys("move_up"), _keys("move_down")],
+		_keys("move_down") == "I, Down" and _keys("move_up") == "Up")
+	_click(settings, "Reset controls")
+	await _frames(2)
+	_check("Reset controls restores the defaults", "%s | %s" % [_keys("move_up"), _keys("move_down")],
+		_keys("move_up") == "W, Up" and _keys("move_down") == "S, Down")
+	_click(settings, "Back")
+	await _frames(3)
+	_check("Back closes the settings", is_instance_valid(settings), not is_instance_valid(settings))
+
+	_click(_main.ui_root, "Play")
+	await _frames(3)
+	var m := _match()
+	_press("pause")
+	await _physics(2)
+	var ingame := m.get_node("UI/InGameMenu") as InGameMenu
+	_click(ingame, "Settings")
+	await _frames(3)
+	_check("Settings opens from the in-game menu", ingame.find_children("*", "SettingsMenu", true, false).size(), ingame.find_children("*", "SettingsMenu", true, false).size() == 1)
+	_press("pause")
+	await _physics(3)
+	_check("Escape closes the settings, the in-game menu stays open", ingame.visible,
+		ingame.visible and ingame.find_children("*", "SettingsMenu", true, false).is_empty())
+	Game.exit_to_menu()
+	await _frames(5)
+
+	Settings.music_volume = saved[0]
+	Settings.sfx_volume = saved[1]
+	Settings.show_name_labels = saved[2]
+	Settings.key_bindings = saved[3]
+	InputSetup.reset_bindings()
+	Settings.key_bindings = saved[3]
+	InputSetup.apply_saved_bindings()
+	Settings.save_settings()
+	Game.audio.apply_volumes()
+
+## Key buttons are matched by their exact text ("S" must not hit "Show name labels").
+func _click_key_button(root: Node, text: String) -> void:
+	for b in root.find_children("*", "Button", true, false):
+		if (b as Button).text == text:
+			(b as Button).pressed.emit()
+			return
+	_check("key button '%s' exists" % text, false, false)
+
+func _keys(action: String) -> String:
+	var parts: PackedStringArray = []
+	for e in InputMap.action_get_events(action):
+		parts.append(InputSetup.event_text(e))
+	return ", ".join(parts)
+
+func _key(code: Key) -> void:
+	for pressed: bool in [true, false]:
+		var ev := InputEventKey.new()
+		ev.physical_keycode = code
+		ev.keycode = code
+		ev.pressed = pressed
+		Input.parse_input_event(ev)
 
 # --- Helpers -----------------------------------------------------------------------------------
 
