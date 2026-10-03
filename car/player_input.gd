@@ -21,6 +21,10 @@ func _physics_process(_delta: float) -> void:
 	if car == null or not is_instance_valid(car):
 		return
 	mouse_screen_position = get_viewport().get_mouse_position()
+	if car.eliminated:
+		camera_rig.has_aim = false   # spectating: no aim look-ahead
+		_current = CarInput.new()
+		return
 	aim_at_screen(mouse_screen_position)
 	var i := CarInput.new()
 	i.drive_mode = CarInput.DriveMode.CLASSIC

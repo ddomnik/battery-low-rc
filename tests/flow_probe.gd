@@ -70,6 +70,7 @@ func _run() -> void:
 	_header("Round end → results → Play again → results → Exit to menu")
 	var cfg := MatchConfig.from_settings()
 	cfg.round_time = 2.0
+	cfg.game_mode = GameMode.Kind.TIMED
 	cfg.bot_count = 9   # cleanup must also work with a full field of bots
 	Game.start_match(cfg)
 	await _frames(3)

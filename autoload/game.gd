@@ -97,7 +97,8 @@ func restart_match() -> void:
 func quit_app() -> void:
 	get_tree().quit()
 
-## Headless smoke tests: `-- --autostart --bots=N --camera=follow|fixed --round=SECONDS`.
+## Headless smoke tests: `-- --autostart --bots=N --camera=follow|fixed --round=SECONDS
+## --mode=timed|table|lives|bomb --lives=N --bomb=SECONDS`.
 func _handle_cmdline() -> void:
 	var autostart := false
 	var config := MatchConfig.from_settings()
@@ -114,11 +115,21 @@ func _handle_cmdline() -> void:
 				config.camera_mode = CameraRig.Mode.FIXED
 			else:
 				push_warning("Game: unknown --camera value '%s' (use follow|fixed)" % mode)
+		elif arg.begins_with("--mode="):
+			var i := GameMode.CLI_NAMES.find(arg.get_slice("=", 1))
+			if i >= 0:
+				config.game_mode = i as GameMode.Kind
+			else:
+				push_warning("Game: unknown --mode (use %s)" % "|".join(GameMode.CLI_NAMES))
+		elif arg.begins_with("--lives="):
+			config.lives = clampi(arg.get_slice("=", 1).to_int(), 1, 9)
+		elif arg.begins_with("--bomb="):
+			config.bomb_time = maxf(1.0, arg.get_slice("=", 1).to_float())
 		elif arg.begins_with("--round="):
 			config.round_time = maxf(1.0, arg.get_slice("=", 1).to_float())
 		else:
 			push_warning("Game: unknown command-line argument '%s'" % arg)
 	if autostart:
-		print("Game: autostart (bots=%d, camera=%s, round=%.0f s)" % [
+		print("Game: autostart (mode=%s, bots=%d, camera=%s, round=%.0f s)" % [GameMode.CLI_NAMES[config.game_mode],
 			config.bot_count, CameraRig.Mode.keys()[config.camera_mode], config.round_time])
 		start_match(config)

@@ -18,6 +18,7 @@ const LOUD_IMPACT := 20.0            # bump strength / crash speed (m/s) that pl
 const QUIET_IMPACT_GAIN := 0.35      # softest impact volume (linear)
 const THROW_PITCH := 1.5             # balloon throw reuses the rocket launch sound, higher
 const BATTERY_PITCH := 0.8
+const POP_PITCH := 1.6
 
 ## A small unshaded box whose color comes from the particle color (vertex color), with alpha.
 static func particle_mesh(size: float) -> BoxMesh:
@@ -58,6 +59,10 @@ func play(kind: StringName, pos: Vector3, param: float) -> void:
 		&"wall":        # car into a wall; param = impact speed
 			_burst(pos, SPARK_COLOR, 20, 9.0, 0.35, 0.1)
 			audio.play_at(&"wall", pos, _impact_db(param))
+		&"pop":         # balloon popped / car eliminated
+			_burst(pos, POOF_COLOR, 24, 6.0, 0.5, 0.15)
+			_bubble(pos, POOF_COLOR, 0.2, 1.0, 0.15, 0.7)
+			audio.play_at(&"splash", pos, 0.0, POP_PITCH)
 		&"landing":     # perfect landing
 			_ring(pos, 1.0, 3.0, 0.4)
 			audio.play_at(&"perfect_landing", pos)

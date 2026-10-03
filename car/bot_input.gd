@@ -14,6 +14,7 @@ const BATTERY_PACK_USE_BELOW := 0.6  # use a battery pack once the battery is be
 const REACHABLE_HEIGHT := 1.5        # skip item boxes this far above / below the bot (e.g. on the table)
 const ARRIVE_DISTANCE := 3.0         # wander points count as reached within this distance
 const WANDER_EXTENT := 35.0          # random wander points within ±this on X and Z
+const BOMB_FLEE_RANGE := 15.0        # sticky bomb: run from the holder when it is this close
 
 @export var aim_error: float = 1.5   # random aim offset (m) per axis
 @export var reaction_delay_min: float = 0.3
@@ -43,7 +44,17 @@ func _physics_process(delta: float) -> void:
 		_think_left = THINK_INTERVAL
 		_think()
 
+	# Sticky bomb: the holder hunts the nearest car to pass it on; everyone else runs from the holder.
+	var bomb := match_node.mode as StickyBombMode
+	var flee := false
+	if bomb != null and bomb.holder != null:
+		if bomb.holder == car:
+			_target_car = _nearest_car()
+		elif _flat(bomb.holder.global_position - car.global_position).length() < BOMB_FLEE_RANGE:
+			flee = true
 	var target := _target_car.global_position if _target_car != null else _target_point
+	if flee:
+		target = car.global_position + _flat(car.global_position - bomb.holder.global_position)
 	var to_target := _flat(target - car.global_position)
 	var i := CarInput.new()
 	i.drive_mode = CarInput.DriveMode.DIRECTIONAL
@@ -132,7 +143,7 @@ func _nearest_car() -> Car:
 	var best: Car = null
 	var best_d := INF
 	for other in match_node.cars:
-		if other == car:
+		if other == car or other.eliminated:
 			continue
 		var d := car.global_position.distance_squared_to(other.global_position)
 		if d < best_d:

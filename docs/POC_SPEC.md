@@ -44,6 +44,13 @@ Decided by the developer during playtests. Where these conflict with later secti
 - The cutout only removes geometry above the bottom of the local car (`focus_car_pos.y − 0.3`), so the surface the car drives on (table top, ramps) never gets a hole. `CameraRig.cutout_radius` = 3.5 m.
 - X-ray silhouettes are a `material_overlay` on the car model meshes (`car/xray.gdshader`); fragments within 2.2 m of the scene depth are discarded, so a car's own parts never trigger it.
 
+**Game modes** (`match/modes/`, chosen in the main menu; `--mode=timed|table|lives|bomb` on the command line)
+- *Time deathmatch* (`TimedMode`): the original mode, adjustable round time.
+- *Last on table* (`LastOnTableMode`): the arena has no outer walls; falling off the map = out, no respawn. Last car left wins.
+- *Deathmatch (lives)* (`LivesMode`): lives are balloons on the car's back (1–9). A scoring hit or falling off pops one (1.5 s safe afterwards); no balloons = out.
+- *Sticky bomb* (`StickyBombMode`): a random car holds a bomb with an adjustable countdown; touching passes it on (1 s pass cooldown). At zero it explodes, the holder is out, a new bomb goes to a random survivor.
+- Eliminated cars are hidden, frozen and without collisions; the local player then spectates (Tab / click = next car). Everyone returns for the podium ceremony; the ranking uses the elimination order (out last = better).
+
 **Podium ceremony (RESULTS)**
 - When the round ends, a three-step podium (`match/podium.gd`) appears at (0, 0, 13): the top three of the ranking stand on it facing the camera, the winner hops every second; everyone else lies on their roof in a row in front. The camera glides to it (north-up, closer); the HUD hides and the results list sits in a panel on the right.
 - Frozen cars neither auto-flip nor earn landing rewards; projectiles in flight are removed and item boxes stop pulling / handing out items.

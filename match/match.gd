@@ -1,13 +1,14 @@
 class_name Match
 extends Node3D
 ## One match: arena, cars, inputs, camera and match UI. Owns the gameplay rules; created by Main, freed on exit.
+## The game mode (child "Mode", see GameMode) decides scoring extras, eliminations, ranking and the round end.
 
 signal camera_mode_changed(mode: CameraRig.Mode)
 signal scores_changed
 ## Every cosmetic effect passes through play_effect; listeners (tests, later audio / network) hear it here.
 signal effect_played(kind: StringName, pos: Vector3, param: float)
 
-## COUNTDOWN: cars frozen, "3 · 2 · 1 · GO!". PLAYING: round timer runs. RESULTS: cars frozen, ranked list.
+## COUNTDOWN: cars frozen, "3 · 2 · 1 · GO!". PLAYING: until the mode says the round is over. RESULTS: podium.
 enum State { COUNTDOWN, PLAYING, RESULTS }
 
 const ARENA_SCENE: PackedScene = preload("res://arena/test_arena.tscn")
@@ -30,6 +31,7 @@ const LANDING_EFFECT_DROP := 0.6      # landing ring sits this far below the car
 const PERFECT_LANDING_COLOR := Color(0.4, 0.95, 1.0)
 const SCORE_POPUP_COLOR := Color(1.0, 0.9, 0.3)
 const KNOCKOUT_COLOR := Color(1.0, 0.45, 0.2)
+const OUT_COLOR := Color(1.0, 0.4, 0.35)
 const SHAKE_DIVISOR := 30.0           # camera trauma = bump strength or crash impact speed / this
 const SPAWN_LIFT := 0.8               # car origin above a spawn marker; the car settles onto its springs
 const RESPAWN_IGNORE_TIME := 0.5
@@ -60,7 +62,9 @@ var time: float = 0.0                 # match clock (physics time)
 var state: State = State.COUNTDOWN
 var state_time: float = 0.0           # seconds since entering the current state
 var countdown_left: float = COUNTDOWN_TIME
-var time_left: float = 0.0            # round timer
+var time_left: float = 0.0            # round timer (modes with uses_round_timer)
+var mode: GameMode = null
+var eliminated_order: Array[Car] = []  # first out first
 
 var _cars_root: Node3D
 var _projectiles_root: Node3D
@@ -85,9 +89,13 @@ func setup(cfg: MatchConfig) -> void:
 		rng.randomize()
 
 	item_defs = ItemRegistry.all()
+	mode = GameMode.create(cfg.game_mode)
+	mode.name = "Mode"
+	mode.match_node = self
 
 	arena = ARENA_SCENE.instantiate() as TestArena
 	arena.name = "Arena"
+	arena.with_walls = mode.arena_has_walls()
 	add_child(arena)
 	var boxes := _add_node3d("ItemBoxes")
 	for marker in arena.item_spawn_points:
@@ -143,6 +151,7 @@ func setup(cfg: MatchConfig) -> void:
 			"color": PLAYER_COLORS[(b + 1) % PLAYER_COLORS.size()], "is_bot": true,
 			"model_path": CarVisual.resolve_model_path("", b),
 		})
+	add_child(mode)   # after the cars exist (modes attach balloons, listen for touches)
 	camera_rig.target = local_car
 	camera_rig.snap_to_target()
 	_hud.bind(local_car, self)
@@ -171,9 +180,9 @@ func _physics_process(delta: float) -> void:
 				countdown_left = 0.0
 				_enter_state(State.PLAYING)
 		State.PLAYING:
-			time_left -= delta
-			if time_left <= 0.0:
-				time_left = 0.0
+			if mode.uses_round_timer():
+				time_left = maxf(time_left - delta, 0.0)
+			if mode.is_round_over():
 				_enter_state(State.RESULTS)
 
 func _enter_state(new_state: State) -> void:
@@ -184,11 +193,23 @@ func _enter_state(new_state: State) -> void:
 		car.frozen = frozen
 	if new_state == State.PLAYING:
 		Game.audio.play_ui(&"go")
+		if Net.is_authority():
+			mode.on_round_start()
 	if new_state == State.RESULTS:
 		_set_menu_open(false)
+		mode.on_round_end()
+		for car in cars:
+			if car.eliminated:
+				car.set_eliminated(false)   # everyone takes part in the ceremony
+		camera_rig.target = local_car
+		_hud.set_spectating("")
 		_hud.visible = false   # the results panel shows the ranking; keep the podium view clear
 		_start_ceremony()
-		_results.show_results(get_ranking(), scores, local_car)
+		var ranking := get_ranking()
+		var values: Array[String] = []
+		for car in ranking:
+			values.append(mode.score_text(car))
+		_results.show_results(ranking, values, local_car)
 	_update_mouse_mode()
 
 ## Podium ceremony: top three on the podium (winner hopping), the rest on their roofs in front of it.
@@ -209,6 +230,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		if state != State.RESULTS:
 			_set_menu_open(not _ingame_menu.visible)
+	elif local_car.eliminated and state == State.PLAYING and not _ingame_menu.visible \
+			and (event.is_action_pressed("spectate_next") or event.is_action_pressed("fire")):
+		get_viewport().set_input_as_handled()
+		_spectate_next()
 	elif OS.is_debug_build() and event.is_action_pressed("debug_toggle_camera"):
 		get_viewport().set_input_as_handled()
 		_toggle_camera_mode()
@@ -256,14 +281,43 @@ func set_camera_mode(mode: CameraRig.Mode) -> void:
 	Settings.save_settings()
 	camera_mode_changed.emit(mode)
 
-## Cars ordered best first: score descending, then player id.
+## Cars ordered best first, by the game mode's rules.
 func get_ranking() -> Array[Car]:
-	var ranked: Array[Car] = cars.duplicate()
-	ranked.sort_custom(func(a: Car, b: Car) -> bool:
-		var sa: int = scores.get(a.player_id, 0)
-		var sb: int = scores.get(b.player_id, 0)
-		return sa > sb if sa != sb else a.player_id < b.player_id)
-	return ranked
+	return mode.ranking()
+
+func alive_cars() -> Array[Car]:
+	var out: Array[Car] = []
+	for car in cars:
+		if not car.eliminated:
+			out.append(car)
+	return out
+
+## Takes a car out of the round. The local player then spectates the remaining cars.
+func eliminate(car: Car) -> void:
+	if car.eliminated or not Net.is_authority():
+		return
+	car.set_eliminated(true)
+	eliminated_order.append(car)
+	play_effect(&"pop", car.global_position, 0.0)
+	if car == local_car:
+		popup("YOU'RE OUT!", OUT_COLOR)
+	if camera_rig.target == car:
+		_spectate_next()
+	scores_changed.emit()
+
+## Spectating: the camera follows the next car still in the round (Tab or click switches).
+func _spectate_next() -> void:
+	var alive := alive_cars()
+	if alive.is_empty():
+		return
+	var i := alive.find(camera_rig.target)
+	var next := alive[(i + 1) % alive.size()]
+	camera_rig.target = next
+	_hud.set_spectating("SPECTATING %s  —  Tab / click: next car" % next.display_name)
+
+## Big fading text for the local player (modes use this too).
+func popup(text: String, color: Color) -> void:
+	_hud.popup(text, color)
 
 ## info = {player_id, peer_id, name, color, is_bot, model_path}
 func spawn_car(info: Dictionary) -> Car:
@@ -309,13 +363,15 @@ func spawn_car(info: Dictionary) -> Car:
 
 ## The car fell off the map: award a knockout, then put it at the spawn point farthest from all other cars.
 func respawn(car: Car) -> void:
-	if not Net.is_authority():
-		return
+	if not Net.is_authority() or state == State.RESULTS:
+		return   # the podium places every car itself (eliminated cars may still be below the map for a tick)
 	var last: float = _last_respawn.get(car.player_id, -INF)
 	if time - last < RESPAWN_IGNORE_TIME:
 		return
 	_last_respawn[car.player_id] = time
 	_award_knockout(car)
+	if not mode.on_fell_off(car):
+		return   # eliminated by the mode
 	var best: Marker3D = arena.spawn_points[0]
 	var best_dist := -1.0
 	for sp in arena.spawn_points:
@@ -403,6 +459,8 @@ func explode(pos: Vector3, radius: float, strength: float, up_strength: float, a
 	if not Net.is_authority():
 		return
 	for car in cars:
+		if car.eliminated:
+			continue
 		var offset := car.global_position - pos
 		var dist := offset.length()
 		if dist > radius:
@@ -446,6 +504,7 @@ func register_hit(attacker: Car, victim: Car) -> void:
 		return
 	_hit_times[key] = time
 	scores[attacker.player_id] = int(scores.get(attacker.player_id, 0)) + 1
+	mode.on_scoring_hit(attacker, victim)
 	scores_changed.emit()
 
 func _on_perfect_landing(car: Car) -> void:

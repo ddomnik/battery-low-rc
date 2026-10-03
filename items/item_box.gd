@@ -122,7 +122,7 @@ func _magnet_target() -> Car:
 	var best: Car = null
 	var best_d := magnet_range
 	for car in match_node.cars:
-		if car.held_item != null or absf(car.global_position.y - global_position.y) > magnet_max_height_diff:
+		if car.eliminated or car.held_item != null or absf(car.global_position.y - global_position.y) > magnet_max_height_diff:
 			continue
 		var d := car.global_position.distance_to(global_position)
 		if d < best_d:

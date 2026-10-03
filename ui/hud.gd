@@ -37,6 +37,7 @@ var _countdown_label: Label
 var _item_label: Label
 var _battery_bar: ProgressBar
 var _score_table: GridContainer
+var _spectate_label: Label
 var _battery_fill: StyleBoxFlat
 var _live_popups: int = 0
 var _time: float = 0.0
@@ -131,6 +132,14 @@ func _ready() -> void:
 	board.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, int(MARGIN))
 	board.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 
+	_spectate_label = _make_label("SpectateLabel", TIMER_FONT_SIZE - 8, 8)
+	_spectate_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_spectate_label.anchor_left = 0.0
+	_spectate_label.anchor_right = 1.0
+	_spectate_label.anchor_top = 0.8
+	_spectate_label.anchor_bottom = 0.8
+	_spectate_label.visible = false
+
 func bind(local_car: Car, m: Match) -> void:
 	car = local_car
 	match_node = m
@@ -153,14 +162,16 @@ func _refresh_scoreboard() -> void:
 	var last_score := -1
 	for i in ranking.size():
 		var c := ranking[i]
-		var score: int = match_node.scores.get(c.player_id, 0)
-		if score != last_score:
-			place = i + 1
-			last_score = score
+		var value := match_node.mode.score_text(c)
+		if not value.is_valid_int() or value.to_int() != last_score:
+			place = i + 1   # tied numbers share a place; IN / OUT / BOMB rows are just counted
+			last_score = value.to_int() if value.is_valid_int() else -1
 		var color := SCORE_LOCAL_COLOR if c == car else c.color
+		if c.eliminated:
+			color = Color(color, 0.45)
 		_score_cell("%d." % place, color, 0.0)
 		_score_cell(c.display_name, color, SCORE_NAME_WIDTH)
-		_score_cell(str(score), color, 0.0)
+		_score_cell(value, color, 0.0)
 
 func _score_cell(text: String, color: Color, min_width: float) -> void:
 	var label := Label.new()
@@ -193,6 +204,11 @@ func _end_popup(label: Label) -> void:
 	_live_popups -= 1
 	label.queue_free()
 
+## Shown while the local player is out and watching another car ("" hides it).
+func set_spectating(text: String) -> void:
+	_spectate_label.text = text
+	_spectate_label.visible = text != ""
+
 func _on_battery_changed(value: float) -> void:
 	_battery_bar.value = value
 
@@ -208,7 +224,8 @@ func _process(delta: float) -> void:
 	var flash := 0.5 + 0.5 * sin(_time * BATTERY_FLASH_SPEED)
 	_battery_fill.bg_color = BATTERY_FULL_COLOR.lerp(BATTERY_FLASH_COLOR, flash) if full \
 		else BATTERY_EMPTY_COLOR.lerp(BATTERY_FULL_COLOR, car.battery)
-	_timer_label.text = _format_time(match_node.time_left)
+	_timer_label.text = _format_time(match_node.time_left) if match_node.mode.uses_round_timer() \
+		else match_node.mode.status_text()
 	match match_node.state:
 		Match.State.COUNTDOWN:
 			_countdown_label.visible = true

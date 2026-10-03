@@ -501,6 +501,14 @@ func _sound_player(node_name: String, stream: AudioStream, bus: StringName) -> A
 func _update_sounds(delta: float) -> void:
 	if _engine == null:
 		return
+	if car.eliminated:
+		for p: AudioStreamPlayer3D in [_engine, _engine_air, _boost_sound, _drift_sound]:
+			if p.playing:
+				p.stop()
+		return
+	if not _engine.playing and _engine.stream != null:
+		_engine.play()
+		_engine_air.play()
 	var top := car.tuning.max_speed * car.tuning.boost_speed_mult
 	var revs := clampf(absf(car.forward_speed) / top, 0.0, 1.0)
 	var pitch := lerpf(ENGINE_PITCH_IDLE, ENGINE_PITCH_TOP, revs)

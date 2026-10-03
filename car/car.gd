@@ -8,6 +8,7 @@ signal item_changed(item: ItemDef)
 signal item_used(car: Car, item: ItemDef, aim_point: Vector3)
 signal perfect_landing(car: Car)
 signal bumped(car: Car, attacker: Car, strength: float)
+signal touched(car: Car, other: Car)    # any car-on-car contact, however soft (sticky bomb hand-over)
 signal wall_hit(car: Car, position: Vector3, impact_speed: float)
 signal respawn_requested(car: Car)
 
@@ -33,6 +34,7 @@ var held_item: ItemDef = null
 var is_boosting: bool = false
 var is_drifting: bool = false
 var frozen: bool = true
+var eliminated: bool = false            # out of the round: hidden, no collisions, ignored by everyone
 var pad_overlaps: int = 0               # charging pads this car is inside (pads count it up and down)
 
 # Read-only caches for visuals, HUD, debug, bots.
@@ -62,6 +64,7 @@ var _step_velocity_frame: int = -1
 var _wall_cooldown: float = 0.0
 var _pending_wall_hits: Array[Dictionary] = []
 var _pending_bumps: Array[Dictionary] = []
+var _pending_touches: Array[Car] = []
 var _bump_cooldowns: Dictionary = {}             # other car instance id → seconds left
 var _pending_teleport: Variant = null       # Transform3D or null
 var _upside_down_time: float = 0.0
@@ -161,6 +164,8 @@ func _detect_bumps(state: PhysicsDirectBodyState3D) -> void:
 		var other := state.get_contact_collider_object(i) as Car
 		if other == null or other == self:
 			continue
+		if not _pending_touches.has(other):
+			_pending_touches.append(other)
 		var id := other.get_instance_id()
 		if _bump_cooldowns.get(id, 0.0) > 0.0:
 			continue
@@ -476,8 +481,14 @@ func _flush_events() -> void:
 	for b in _pending_bumps:
 		bumped.emit(self, b["attacker"], b["strength"])
 	_pending_bumps.clear()
+	for other in _pending_touches:
+		if is_instance_valid(other) and not other.eliminated:
+			touched.emit(self, other)
+	_pending_touches.clear()
 
 func _update_recovery(delta: float) -> void:
+	if eliminated:
+		return
 	_reset_cooldown = maxf(0.0, _reset_cooldown - delta)
 	if global_basis.y.dot(Vector3.UP) < tuning.flip_dot and linear_velocity.length() < tuning.flip_max_speed:
 		_upside_down_time += delta
@@ -495,6 +506,19 @@ func _update_recovery(delta: float) -> void:
 		teleport_to(Transform3D(Basis.looking_at(f.normalized(), Vector3.UP), global_position + Vector3.UP * tuning.reset_lift))
 	if global_position.y < tuning.kill_y:
 		respawn_requested.emit(self)
+
+## Takes the car out of the round (hidden, frozen in place, no collisions) or brings it back (podium ceremony).
+func set_eliminated(on: bool) -> void:
+	eliminated = on
+	visible = not on
+	freeze = on
+	frozen = true
+	collision_layer = 0 if on else Layers.CARS
+	collision_mask = 0 if on else Layers.WORLD | Layers.CARS
+	if on:
+		set_held_item(null)
+		is_boosting = false
+		is_drifting = false
 
 ## Teleports must go through _integrate_forces; setting global_position on a RigidBody3D fights the solver.
 func teleport_to(xf: Transform3D) -> void:

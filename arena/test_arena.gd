@@ -13,6 +13,7 @@ const ITEM_RING_COUNT := 8
 const ITEM_RING_RADIUS := 24.0
 const ITEM_HEIGHT := 0.8             # box center above the surface
 
+var with_walls: bool = true           # set before adding to the tree ("Last on table" removes them)
 var spawn_points: Array[Marker3D] = []
 var item_spawn_points: Array[Marker3D] = []
 
@@ -61,10 +62,11 @@ func _build_geometry() -> void:
 	# Walls: inner faces on the floor edges; the south wall (camera side) is low so it barely occludes.
 	var edge := HALF_SIZE + WALL_THICKNESS * 0.5
 	var span := HALF_SIZE * 2.0 + WALL_THICKNESS * 2.0
-	ArenaBuilder.box(self, Vector3(0.0, WALL_HEIGHT * 0.5, -edge), Vector3(span, WALL_HEIGHT, WALL_THICKNESS), purple)
-	ArenaBuilder.box(self, Vector3(edge, WALL_HEIGHT * 0.5, 0.0), Vector3(WALL_THICKNESS, WALL_HEIGHT, span), purple)
-	ArenaBuilder.box(self, Vector3(-edge, WALL_HEIGHT * 0.5, 0.0), Vector3(WALL_THICKNESS, WALL_HEIGHT, span), purple)
-	ArenaBuilder.box(self, Vector3(0.0, SOUTH_WALL_HEIGHT * 0.5, edge), Vector3(span, SOUTH_WALL_HEIGHT, WALL_THICKNESS), purple)
+	if with_walls:
+		ArenaBuilder.box(self, Vector3(0.0, WALL_HEIGHT * 0.5, -edge), Vector3(span, WALL_HEIGHT, WALL_THICKNESS), purple)
+		ArenaBuilder.box(self, Vector3(edge, WALL_HEIGHT * 0.5, 0.0), Vector3(WALL_THICKNESS, WALL_HEIGHT, span), purple)
+		ArenaBuilder.box(self, Vector3(-edge, WALL_HEIGHT * 0.5, 0.0), Vector3(WALL_THICKNESS, WALL_HEIGHT, span), purple)
+		ArenaBuilder.box(self, Vector3(0.0, SOUTH_WALL_HEIGHT * 0.5, edge), Vector3(span, SOUTH_WALL_HEIGHT, WALL_THICKNESS), purple)
 
 	# Table: raised platform, top at y = 3, x −10..10, z −18..−6. North edge is an open drop.
 	ArenaBuilder.box(self, Vector3(0.0, 1.5, -12.0), Vector3(20.0, 3.0, 12.0), blue)

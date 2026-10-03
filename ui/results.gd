@@ -39,23 +39,22 @@ func _ready() -> void:
 	UiKit.button(box, "Play again").pressed.connect(play_again_requested.emit)
 	UiKit.button(box, "Exit to menu").pressed.connect(exit_requested.emit)
 
-## ranking is best first; scores maps player_id → score.
-func show_results(ranking: Array[Car], scores: Dictionary, local_car: Car) -> void:
+## ranking is best first; values[i] is the game mode's score text for ranking[i] (points, lives, IN / OUT).
+func show_results(ranking: Array[Car], values: Array[String], local_car: Car) -> void:
 	for child in _table.get_children():
 		_table.remove_child(child)
 		child.queue_free()
 	var place := 0
-	var last_score := -1
+	var last_value := ""
 	for i in ranking.size():
 		var car := ranking[i]
-		var score: int = scores.get(car.player_id, 0)
-		if score != last_score:
-			place = i + 1   # tied scores share a place
-			last_score = score
+		if values[i] != last_value or not values[i].is_valid_int():
+			place = i + 1   # tied point / life counts share a place
+			last_value = values[i]
 		var color := LOCAL_HIGHLIGHT if car == local_car else car.color
 		_cell("%d." % place, color, 0.0)
 		_cell(car.display_name, color, NAME_COLUMN_WIDTH)
-		_cell(str(score), color, 0.0)
+		_cell(values[i], color, 0.0)
 	visible = true
 
 func _cell(text: String, color: Color, min_width: float) -> void:

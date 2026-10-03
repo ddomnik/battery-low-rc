@@ -75,7 +75,7 @@ func _sweep(from: Vector3, to: Vector3) -> Variant:
 		best = hit.position
 		best_dist = from.distance_to(hit.position)
 	for car in match_node.cars:
-		if immune and car == shooter:
+		if (immune and car == shooter) or car.eliminated:
 			continue
 		var p := Geometry3D.get_closest_point_to_segment(car.global_position, from, to)
 		if p.distance_to(car.global_position) < HIT_RADIUS and from.distance_to(p) < best_dist:

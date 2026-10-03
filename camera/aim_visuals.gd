@@ -59,6 +59,11 @@ func _physics_process(_delta: float) -> void:
 func _process(_delta: float) -> void:
 	if car == null or player_input == null:
 		return
+	visible = not car.eliminated
+	if car.eliminated:
+		_crosshair.visible = false
+		_lines.clear_surfaces()
+		return
 	_crosshair.visible = match_node.desired_mouse_mode() == Input.MOUSE_MODE_CONFINED_HIDDEN
 	_crosshair.move_to(player_input.mouse_screen_position)
 
