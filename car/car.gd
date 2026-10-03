@@ -416,7 +416,9 @@ func _update_landing(state: PhysicsDirectBodyState3D, xf: Transform3D, fwd: Vect
 		air_time = 0.0
 	if _landing_window > 0.0:
 		_landing_window -= dt
-		if grounded_count == WHEELS:
+		if frozen:
+			_landing_window = 0.0   # no rewards outside play (e.g. the winner hopping on the podium)
+		elif grounded_count == WHEELS:
 			_landing_window = 0.0
 			last_landing_reward = landing_reward_fraction(_landing_air_time)
 			var push := lerpf(tuning.landing_boost_min, tuning.landing_boost_max, last_landing_reward)
@@ -481,6 +483,8 @@ func _update_recovery(delta: float) -> void:
 		_upside_down_time += delta
 	else:
 		_upside_down_time = 0.0
+	if frozen:
+		_upside_down_time = 0.0   # frozen cars stay as placed (podium ceremony: losers lie on their roofs)
 	if (_input.reset and _reset_cooldown <= 0.0) or _upside_down_time > tuning.flip_auto_time:
 		_upside_down_time = 0.0
 		_reset_cooldown = tuning.reset_cooldown

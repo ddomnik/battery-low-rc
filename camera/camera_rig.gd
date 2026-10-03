@@ -25,6 +25,8 @@ enum Mode {FOLLOW, FIXED}
 @export var shake_decay: float = 1.6
 @export var shake_max_offset: float = 0.6
 @export var shake_noise_speed: float = 60.0
+@export var showcase_distance: float = 24.0    # closer view for the podium ceremony
+@export var showcase_sharpness: float = 2.0   # 1/s; glide to the podium
 @export var cutout_radius: float = 3.5        # occlusion cutout around the camera→car line (m); 0 = off
 @export var cutout_transparency: float = 0.7  # how see-through the cut area gets (0..1)
 @export var cutout_fade_speed: float = 8.0    # 1/s; fade in / out when the car gets hidden / visible
@@ -43,6 +45,9 @@ var _trauma: float = 0.0
 var _noise: FastNoiseLite = FastNoiseLite.new()
 var _time: float = 0.0
 var _car_hidden: bool = false
+var _showcase: bool = false           # looking at a fixed point (podium) instead of following the car
+var _showcase_point: Vector3 = Vector3.ZERO
+var _lens_distance: float = 0.0
 var _cutout_amount: float = 0.0       # 0..1, faded toward _car_hidden
 
 static func mode_label(m: Mode) -> String:
@@ -59,13 +64,14 @@ func _ready() -> void:
 	_yaw = deg_to_rad(fixed_yaw_deg)
 	_goal_yaw = _yaw
 	rotation = Vector3(0.0, _yaw, 0.0)
+	_lens_distance = distance
 	_apply_lens()
 
 ## Places the camera on the rig from pitch_deg, distance and fov_deg.
 func _apply_lens() -> void:
 	var pitch := deg_to_rad(pitch_deg)
 	camera.fov = fov_deg
-	camera.position = Vector3(0.0, sin(pitch) * distance, cos(pitch) * distance)
+	camera.position = Vector3(0.0, sin(pitch) * _lens_distance, cos(pitch) * _lens_distance)
 	camera.rotation = Vector3(-pitch, 0.0, 0.0)
 	camera.v_offset = view_offset
 
@@ -89,6 +95,15 @@ func snap_to_target() -> void:
 		_yaw = _goal_yaw
 		rotation.y = _yaw
 
+func _process_showcase(delta: float) -> void:
+	var blend := 1.0 - exp(-showcase_sharpness * delta)
+	_yaw = lerp_angle(_yaw, 0.0, blend)
+	rotation.y = _yaw
+	_focus = _focus.lerp(_showcase_point, blend)
+	global_position = _focus
+	_car_hidden = false
+	RenderingServer.global_shader_parameter_set(&"cutout_strength", 0.0)
+
 func _exit_tree() -> void:
 	RenderingServer.global_shader_parameter_set(&"cutout_strength", 0.0)   # no match → nothing is cut
 
@@ -96,7 +111,7 @@ func _exit_tree() -> void:
 ## (physics queries belong in physics ticks; _process fades the cutout from the result).
 func _physics_process(_delta: float) -> void:
 	_car_hidden = false
-	if target == null or not is_instance_valid(target) or camera == null:
+	if _showcase or target == null or not is_instance_valid(target) or camera == null:
 		return
 	var space := get_world_3d().direct_space_state
 	var from := camera.global_position
@@ -107,11 +122,20 @@ func _physics_process(_delta: float) -> void:
 			_car_hidden = true
 			return
 
+## Glides to a fixed point, north-up and closer (podium ceremony). Stays there until the match ends.
+func show_point(point: Vector3) -> void:
+	_showcase = true
+	_showcase_point = point
+
 func add_trauma(amount: float) -> void:
 	_trauma = clampf(_trauma + amount, 0.0, 1.0)
 
 func _process(delta: float) -> void:
+	_lens_distance = lerpf(_lens_distance, showcase_distance if _showcase else distance, 1.0 - exp(-showcase_sharpness * delta))
 	_apply_lens()
+	if _showcase:
+		_process_showcase(delta)
+		return
 	if target == null or not is_instance_valid(target):
 		return
 	var car_xf := target.get_global_transform_interpolated()

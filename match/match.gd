@@ -17,6 +17,8 @@ const HUD_SCENE: PackedScene = preload("res://ui/hud.tscn")
 const INGAME_MENU_SCENE: PackedScene = preload("res://ui/ingame_menu.tscn")
 const RESULTS_SCENE: PackedScene = preload("res://ui/results.tscn")
 const COUNTDOWN_TIME := 3.0
+const PODIUM_POSITION := Vector3(0.0, 0.0, 13.0)   # open floor south of ramp A; the losers' row lies at z ≈ 18
+const PODIUM_VIEW_HEIGHT := 1.2                     # camera aims at this height above the podium base
 const HIT_COOLDOWN := 1.0             # a hit on the same victim scores at most once per second per attacker
 const KNOCKOUT_POINTS := 10           # knocking a car off the map
 const KNOCKOUT_CREDIT_TIME := 6.0     # the last car that hit the victim this recently gets the knockout
@@ -70,6 +72,7 @@ var _local_score_shown: int = 0
 var _countdown_shown: int = 0         # last countdown number that beeped
 var _ingame_menu: InGameMenu
 var _results: ResultsScreen
+var _podium: Podium = null
 var _last_respawn: Dictionary = {}    # player_id → match time of the last accepted respawn
 var _hit_times: Dictionary = {}       # Vector2i(attacker id, victim id) → match time of the last scored hit
 var _last_hit_by: Dictionary = {}     # victim player_id → {"attacker": Car, "time": float} (any bump / blast)
@@ -183,8 +186,23 @@ func _enter_state(new_state: State) -> void:
 		Game.audio.play_ui(&"go")
 	if new_state == State.RESULTS:
 		_set_menu_open(false)
+		_hud.visible = false   # the results panel shows the ranking; keep the podium view clear
+		_start_ceremony()
 		_results.show_results(get_ranking(), scores, local_car)
 	_update_mouse_mode()
+
+## Podium ceremony: top three on the podium (winner hopping), the rest on their roofs in front of it.
+func _start_ceremony() -> void:
+	for p in _projectiles_root.get_children():
+		p.queue_free()
+	_podium = Podium.new()
+	_podium.name = "Podium"
+	_podium.position = PODIUM_POSITION
+	add_child(_podium)
+	if Net.is_authority():
+		_podium.place_cars(get_ranking())
+	camera_rig.show_point(PODIUM_POSITION + Vector3.UP * PODIUM_VIEW_HEIGHT)
+	Game.audio.play_ui(&"perfect_landing")
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):

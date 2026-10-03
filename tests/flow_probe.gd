@@ -80,6 +80,17 @@ func _run() -> void:
 	_check("cars frozen, mouse visible on results", first.local_car.frozen,
 		first.local_car.frozen and first.desired_mouse_mode() == Input.MOUSE_MODE_VISIBLE)
 	_check("ranked list shows the player", _find_label(results, cfg.player_name) != null, _find_label(results, cfg.player_name) != null)
+	await _physics(300)   # 5 s of ceremony
+	var ranking := first.get_ranking()
+	var winner := ranking[0]
+	var on_top := absf(winner.global_position.x - Match.PODIUM_POSITION.x) < 1.4 		and absf(winner.global_position.z - Match.PODIUM_POSITION.z) < 1.6 and winner.global_position.y > 1.9
+	_check("podium: winner still on the top step after 5 s of hopping", winner.global_position, on_top)
+	var flipped := 0
+	for c in ranking.slice(3):
+		if c.global_basis.y.dot(Vector3.UP) < -0.5:
+			flipped += 1
+	_check("podium: everyone else lies on their roof in front", "%d/%d" % [flipped, ranking.size() - 3], flipped == ranking.size() - 3)
+	_check("HUD hidden during the ceremony", (first.get_node("UI/Hud") as Control).visible, not (first.get_node("UI/Hud") as Control).visible)
 	_press("pause")
 	await _physics(2)
 	_check("Escape does nothing on the results screen", true, not (first.get_node("UI/InGameMenu") as InGameMenu).visible)

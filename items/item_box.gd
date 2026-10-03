@@ -96,7 +96,7 @@ func _physics_process(delta: float) -> void:
 			# A car may already be parked inside when the box comes back.
 			for body in get_overlapping_bodies():
 				_try_pickup(body)
-	if active and Net.is_authority():
+	if active and Net.is_authority() and match_node != null and match_node.state != Match.State.RESULTS:
 		_update_magnet(delta)
 
 ## Gravity-like pull toward the nearest eligible car, or a slow drift back home.
@@ -131,7 +131,7 @@ func _magnet_target() -> Car:
 	return best
 
 func _try_pickup(body: Node3D) -> void:
-	if not active or not Net.is_authority() or match_node == null:
+	if not active or not Net.is_authority() or match_node == null or match_node.state == Match.State.RESULTS:
 		return
 	var car := body as Car
 	if car == null or car.held_item != null:

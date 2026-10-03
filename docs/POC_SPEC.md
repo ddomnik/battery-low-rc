@@ -44,6 +44,10 @@ Decided by the developer during playtests. Where these conflict with later secti
 - The cutout only removes geometry above the bottom of the local car (`focus_car_pos.y − 0.3`), so the surface the car drives on (table top, ramps) never gets a hole. `CameraRig.cutout_radius` = 3.5 m.
 - X-ray silhouettes are a `material_overlay` on the car model meshes (`car/xray.gdshader`); fragments within 2.2 m of the scene depth are discarded, so a car's own parts never trigger it.
 
+**Podium ceremony (RESULTS)**
+- When the round ends, a three-step podium (`match/podium.gd`) appears at (0, 0, 13): the top three of the ranking stand on it facing the camera, the winner hops every second; everyone else lies on their roof in a row in front. The camera glides to it (north-up, closer); the HUD hides and the results list sits in a panel on the right.
+- Frozen cars neither auto-flip nor earn landing rewards; projectiles in flight are removed and item boxes stop pulling / handing out items.
+
 **Settings menu**
 - Reachable from the main menu and the in-game menu: music and effects volume (effects include engines), "Show name labels", and remapping of all player actions (two slots each; a key moves away from any other action it was bound to). Saved in `user://settings.cfg`.
 
