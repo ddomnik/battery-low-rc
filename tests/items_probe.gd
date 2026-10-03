@@ -45,6 +45,7 @@ func _run() -> void:
 	await _explosion_falloff()
 	await _battery_and_hud()
 	await _catch_up_weights()
+	_sound_bank()
 
 	print("\n%s: %d failing check(s)" % ["FAIL" if _failures > 0 else "PASS", _failures])
 	get_tree().quit(1 if _failures > 0 else 0)
@@ -265,6 +266,23 @@ func _catch_up_weights() -> void:
 	_check("last: rocket_trio ≈ 40 %", w[3] / total, absf(w[3] / total - 0.4) < 0.01)
 	_remove(other)
 
+## Sound files: every kind resolves, variations rotate, loops loop, music is found. (Headless plays nothing.)
+func _sound_bank() -> void:
+	_header("Sound bank")
+	var bank := SoundBank.new()
+	var missing: Array[String] = []
+	for kind: StringName in SoundBank.FILES:
+		if bank.next(kind) == null:
+			missing.append(String(kind))
+	_check("every sound kind finds its file(s)", missing, missing.is_empty())
+	var seen: Array[AudioStream] = [bank.next(&"pickup"), bank.next(&"pickup"), bank.next(&"pickup"), bank.next(&"pickup")]
+	_check("variations rotate (pickup: 1 → 2 → 3 → 1)", seen.size(),
+		seen[0] != seen[1] and seen[1] != seen[2] and seen[0] != seen[2] and seen[3] == seen[0])
+	var engine := bank.looping(&"engine") as AudioStreamWAV
+	_check("engine sound loops", engine != null and engine.loop_mode == AudioStreamWAV.LOOP_FORWARD,
+		engine != null and engine.loop_mode == AudioStreamWAV.LOOP_FORWARD)
+	_check("music tracks found", bank.music_tracks().size(), bank.music_tracks().size() >= 2)
+
 # --- Helpers -----------------------------------------------------------------------------------
 
 ## Gives the car an item, aims at target, fires, and returns the explosion positions (waits up to 3.5 s).
@@ -281,9 +299,9 @@ func _fire(id: StringName, target: Vector3, expected: int) -> Array[Vector3]:
 		t += TICK
 		hits.clear()
 		for e in _effects:
-			if e["kind"] == &"explosion":
+			if e["kind"] == &"explosion" or e["kind"] == &"splash":
 				hits.append(e["pos"])
-	_check("fired: %d explosion(s), muzzle flash" % expected, hits.size(), hits.size() == expected and _count(&"fire") == 1)
+	_check("fired: %d explosion(s), muzzle flash" % expected, hits.size(), hits.size() == expected and _count(&"fire") + _count(&"throw") == 1)
 	await _ticks(30)
 	return hits
 

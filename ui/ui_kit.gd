@@ -35,6 +35,7 @@ static func button(parent: Control, text: String) -> Button:
 	b.text = text
 	b.custom_minimum_size = BUTTON_SIZE
 	b.add_theme_font_size_override("font_size", BUTTON_FONT_SIZE)
+	b.pressed.connect(func() -> void: Game.audio.play_ui(&"ui_click"))
 	parent.add_child(b)
 	return b
 

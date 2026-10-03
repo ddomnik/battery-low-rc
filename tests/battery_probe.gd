@@ -152,7 +152,7 @@ func _wall_crash() -> void:
 		bounce = maxf(bounce, _car.linear_velocity.z)   # +z = away from the north wall
 	_input.throttle = 0.0
 	for e: Dictionary in _effect_log:
-		if e["kind"] == &"bump":
+		if e["kind"] == &"wall":
 			crash_param = maxf(crash_param, e["param"])
 	_info("impact speed of the first hit (m/s)", crash_param)
 	_info("bounce-back speed (m/s)", bounce)
@@ -162,14 +162,14 @@ func _wall_crash() -> void:
 	_effect_log.clear()
 	await _ticks(90)
 	_input.throttle = 0.0
-	_check("slow bump into the wall (3 m/s): no kickback", _effect_log.size(), not _has_effect(&"bump"))
+	_check("slow bump into the wall (3 m/s): no kickback", _effect_log.size(), not _has_effect(&"wall"))
 
 	await _place(Vector3(-40.0, 0.8, -43.2), Vector3.RIGHT.rotated(Vector3.UP, deg_to_rad(8.0)), 16.0)
 	_effect_log.clear()
 	_input.throttle = 1.0
 	await _ticks(60)
 	_input.throttle = 0.0
-	_check("glancing along the wall (8°, 16 m/s): no kickback", _effect_log.size(), not _has_effect(&"bump"))
+	_check("glancing along the wall (8°, 16 m/s): no kickback", _effect_log.size(), not _has_effect(&"wall"))
 
 func _has_effect(kind: StringName) -> bool:
 	for e: Dictionary in _effect_log:

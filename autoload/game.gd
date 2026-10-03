@@ -10,11 +10,15 @@ const TOAST_TIME := 3.5
 const TOAST_FADE := 0.6
 
 var state: State = State.BOOT
+var audio: AudioDirector = null   # music, interface and positional sounds
 var current_config: MatchConfig = null
 
 var _main: Main = null
 
 func _ready() -> void:
+	audio = AudioDirector.new()
+	audio.name = "Audio"
+	add_child(audio)
 	_apply_window_mode()
 	_handle_cmdline.call_deferred()
 

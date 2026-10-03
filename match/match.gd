@@ -67,6 +67,7 @@ var _inputs_root: Node
 var _ui: CanvasLayer
 var _hud: Hud
 var _local_score_shown: int = 0
+var _countdown_shown: int = 0         # last countdown number that beeped
 var _ingame_menu: InGameMenu
 var _results: ResultsScreen
 var _last_respawn: Dictionary = {}    # player_id → match time of the last accepted respawn
@@ -160,6 +161,9 @@ func _physics_process(delta: float) -> void:
 	match state:
 		State.COUNTDOWN:
 			countdown_left -= delta
+			if ceili(countdown_left) != _countdown_shown and countdown_left > 0.0:
+				_countdown_shown = ceili(countdown_left)
+				Game.audio.play_ui(&"countdown")
 			if countdown_left <= 0.0:
 				countdown_left = 0.0
 				_enter_state(State.PLAYING)
@@ -175,6 +179,8 @@ func _enter_state(new_state: State) -> void:
 	var frozen := new_state != State.PLAYING
 	for car in cars:
 		car.frozen = frozen
+	if new_state == State.PLAYING:
+		Game.audio.play_ui(&"go")
 	if new_state == State.RESULTS:
 		_set_menu_open(false)
 		_results.show_results(get_ranking(), scores, local_car)
@@ -344,9 +350,11 @@ func roll_item(car: Car) -> ItemDef:
 func _on_item_used(car: Car, item: ItemDef, aim_point: Vector3) -> void:
 	if not Net.is_authority():
 		return
+	var effect := &"fire"
 	match item.kind:
 		ItemDef.Kind.BATTERY:
 			car.set_battery(car.battery + item.battery_amount)
+			effect = &"battery"
 		ItemDef.Kind.ROCKET:
 			for n in item.count:
 				var t := 0.0 if item.count == 1 else float(n) / float(item.count - 1) - 0.5
@@ -354,7 +362,8 @@ func _on_item_used(car: Car, item: ItemDef, aim_point: Vector3) -> void:
 		ItemDef.Kind.BALLOON:
 			var space := car.get_world_3d().direct_space_state
 			spawn_projectile(car, item, Ballistics.clamp_target(space, car.global_position, aim_point, item.max_range), 0.0)
-	play_effect(&"fire", car.get_muzzle_position(), 0.0)
+			effect = &"throw"
+	play_effect(effect, car.get_muzzle_position(), 0.0)
 
 func spawn_projectile(shooter: Car, item: ItemDef, target: Vector3, spread_deg: float) -> void:
 	var origin := shooter.get_muzzle_position()
@@ -370,9 +379,9 @@ func spawn_projectile(shooter: Car, item: ItemDef, target: Vector3, spread_deg: 
 	_projectiles_root.add_child(p)
 
 ## Knocks back every car in the radius (linear falloff) and scores hits for the attacker.
-## spin = random yaw twist, tumble = tip-away spin (both rad/s at the center).
+## spin = random yaw twist, tumble = tip-away spin (both rad/s at the center). effect = &"explosion" or &"splash".
 func explode(pos: Vector3, radius: float, strength: float, up_strength: float, attacker: Car,
-		spin: float = 3.0, tumble: float = 1.5) -> void:
+		spin: float = 3.0, tumble: float = 1.5, effect: StringName = &"explosion") -> void:
 	if not Net.is_authority():
 		return
 	for car in cars:
@@ -388,7 +397,7 @@ func explode(pos: Vector3, radius: float, strength: float, up_strength: float, a
 		note_hit(attacker, car)
 		if car != attacker and strength * falloff >= car.tuning.bump_score_strength * EXPLOSION_HIT_FACTOR:
 			register_hit(attacker, car)
-	play_effect(&"explosion", pos, radius)
+	play_effect(effect, pos, radius)
 
 ## Remembers who last touched a car (any bump or blast), for knockout credit.
 func note_hit(attacker: Car, victim: Car) -> void:
@@ -436,7 +445,7 @@ func _on_bumped(car: Car, attacker: Car, strength: float) -> void:
 		camera_rig.add_trauma(strength / SHAKE_DIVISOR)
 
 func _on_wall_hit(car: Car, pos: Vector3, impact_speed: float) -> void:
-	play_effect(&"bump", pos, impact_speed)
+	play_effect(&"wall", pos, impact_speed)
 	if car == local_car:
 		camera_rig.add_trauma(impact_speed / SHAKE_DIVISOR)
 
@@ -449,7 +458,7 @@ func _on_scores_changed() -> void:
 ## The single choke point for cosmetic effects (later an RPC). Adds camera shake for the local player.
 func play_effect(kind: StringName, pos: Vector3, param: float) -> void:
 	_effects.play(kind, pos, param)
-	if kind == &"explosion" and local_car != null:
+	if (kind == &"explosion" or kind == &"splash") and local_car != null:
 		var d := local_car.global_position.distance_to(pos)
 		camera_rig.add_trauma(clampf(1.0 - d / (param * EXPLOSION_SHAKE_RANGE), 0.0, 1.0) * EXPLOSION_SHAKE)
 	effect_played.emit(kind, pos, param)

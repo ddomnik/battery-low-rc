@@ -43,6 +43,16 @@ const EXHAUST_FADE_SPEED := 10.0                  # cone grows / shrinks this fa
 const EXHAUST_FLICKER_SPEED := 37.0
 const EXHAUST_FLICKER := 0.15
 const SHADOW_SIZE := Vector3(1.6, 12.0, 2.4)
+const ENGINE_PITCH_IDLE := 0.8        # engine pitch at standstill …
+const ENGINE_PITCH_TOP := 1.6         # … and at boost top speed
+const AIR_PITCH_EXTRA := 0.25         # the airborne motor revs a bit higher on top
+const ENGINE_DB_LOCAL := -6.0         # your car
+const ENGINE_DB_OTHER := -15.0        # everyone else (ten engines at once get loud)
+const ENGINE_FADE := 8.0              # 1/s; ground ↔ air engine cross-fade
+const BOOST_DB := -4.0
+const DRIFT_DB := -8.0
+const SOUND_UNIT_SIZE := 30.0         # the camera listens from ~50 m away
+const SILENT_DB := -60.0
 const SHADOW_TOP := 2.0                # the decal box spans 2 m above to 10 m below the car
 const SHADOW_ALPHA := 0.55
 const SHADOW_TEXTURE_SIZE := 64
@@ -76,6 +86,12 @@ var _flame: GPUParticles3D = null
 var _exhaust: Node3D = null
 var _exhaust_mats: Array[ShaderMaterial] = []
 var _exhaust_amount: float = 0.0
+var _engine: AudioStreamPlayer3D = null
+var _engine_air: AudioStreamPlayer3D = null
+var _boost_sound: AudioStreamPlayer3D = null
+var _drift_sound: AudioStreamPlayer3D = null
+var _air_mix: float = 0.0             # 0 = ground engine, 1 = airborne engine
+var _engine_db: float = ENGINE_DB_OTHER
 var _time: float = 0.0
 
 ## Returns the model path to use. bot_index < 0 means the local player.
@@ -111,6 +127,7 @@ func setup(model_scene: PackedScene, tuning: CarTuning, color: Color, is_local: 
 	_build_label()
 	_build_shadow()
 	_build_particles(tuning, ground_y)
+	_build_sounds()
 
 func _process(delta: float) -> void:
 	if car == null:
@@ -135,6 +152,7 @@ func _process(delta: float) -> void:
 	if _flame != null and _flame.emitting != car.is_boosting:
 		_flame.emitting = car.is_boosting
 	_update_exhaust(delta)
+	_update_sounds(delta)
 	if _is_local and _ring_mat != null:
 		var c := _base_color.lightened(LOCAL_RING_LIGHTEN)
 		var pulse := 1.0 - LOCAL_PULSE_DEPTH * (0.5 + 0.5 * sin(_time * LOCAL_PULSE_SPEED))
@@ -441,6 +459,59 @@ func _soft_dot() -> GradientTexture2D:
 	tex.width = 32
 	tex.height = 32
 	return tex
+
+# --- Sounds: engine (same for every car), airborne engine, boost, drift --------------------------
+
+func _build_sounds() -> void:
+	if not Game.audio.enabled:
+		return
+	_engine_db = ENGINE_DB_LOCAL if _is_local else ENGINE_DB_OTHER
+	_engine = _sound_player("EngineSound", Game.audio.bank.looping(&"engine"), AudioDirector.BUS_ENGINE)
+	_engine_air = _sound_player("AirEngineSound", Game.audio.bank.looping(&"engine_air"), AudioDirector.BUS_ENGINE)
+	_boost_sound = _sound_player("BoostSound", Game.audio.bank.looping(&"boost"), AudioDirector.BUS_SFX)
+	_drift_sound = _sound_player("DriftSound", null, AudioDirector.BUS_SFX)
+	_engine.volume_db = _engine_db
+	_engine_air.volume_db = SILENT_DB
+	_boost_sound.volume_db = BOOST_DB
+	_drift_sound.volume_db = DRIFT_DB
+	if _engine.stream != null:
+		_engine.play()
+	if _engine_air.stream != null:
+		_engine_air.play()
+
+func _sound_player(node_name: String, stream: AudioStream, bus: StringName) -> AudioStreamPlayer3D:
+	var p := AudioStreamPlayer3D.new()
+	p.name = node_name
+	p.stream = stream
+	p.bus = bus
+	p.unit_size = SOUND_UNIT_SIZE
+	add_child(p)
+	return p
+
+func _update_sounds(delta: float) -> void:
+	if _engine == null:
+		return
+	var top := car.tuning.max_speed * car.tuning.boost_speed_mult
+	var revs := clampf(absf(car.forward_speed) / top, 0.0, 1.0)
+	var pitch := lerpf(ENGINE_PITCH_IDLE, ENGINE_PITCH_TOP, revs)
+	# Airborne: cross-fade to the free-revving motor.
+	_air_mix = move_toward(_air_mix, 1.0 if car.grounded_count == 0 else 0.0, delta * ENGINE_FADE)
+	_engine.pitch_scale = pitch
+	_engine_air.pitch_scale = pitch + AIR_PITCH_EXTRA
+	_engine.volume_db = _engine_db + linear_to_db(maxf(1.0 - _air_mix, 0.001))
+	_engine_air.volume_db = _engine_db + linear_to_db(maxf(_air_mix, 0.001))
+
+	if car.is_boosting and not _boost_sound.playing and _boost_sound.stream != null:
+		_boost_sound.play()
+	elif not car.is_boosting and _boost_sound.playing:
+		_boost_sound.stop()
+	# Tire squeaks don't loop cleanly; play the next variation whenever the last one ends.
+	if car.is_drifting and not _drift_sound.playing:
+		_drift_sound.stream = Game.audio.bank.next(&"drift")
+		if _drift_sound.stream != null:
+			_drift_sound.play()
+	elif not car.is_drifting and _drift_sound.playing:
+		_drift_sound.stop()
 
 func _update_shadow() -> void:
 	if _shadow == null or car == null:

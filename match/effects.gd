@@ -1,7 +1,8 @@
 class_name Effects
 extends Node3D
 ## Cosmetic effects behind Match.play_effect (the single choke point that later becomes an RPC).
-## Every effect is a short-lived node tree animated by its own Tween and freed when the tween ends.
+## Every effect is a short-lived node tree animated by its own Tween and freed when the tween ends, plus a
+## positional sound from Game.audio (variations rotate).
 
 const EXPLOSION_COLOR := Color(1.0, 0.55, 0.15)
 const EXPLOSION_TIME := 0.4
@@ -10,7 +11,13 @@ const EXPLOSION_ALPHA := 0.7
 const POOF_COLOR := Color(1.0, 1.0, 1.0)
 const FLASH_COLOR := Color(1.0, 0.85, 0.3)
 const SPARK_COLOR := Color(1.0, 0.9, 0.4)
+const BATTERY_COLOR := Color(0.45, 0.95, 0.35)
 const RING_COLOR := Color(0.4, 0.95, 1.0)
+const SPLASH_COLOR := Color(0.35, 0.65, 1.0)
+const LOUD_IMPACT := 20.0            # bump strength / crash speed (m/s) that plays at full volume
+const QUIET_IMPACT_GAIN := 0.35      # softest impact volume (linear)
+const THROW_PITCH := 1.5             # balloon throw reuses the rocket launch sound, higher
+const BATTERY_PITCH := 0.8
 
 ## A small unshaded box whose color comes from the particle color (vertex color), with alpha.
 static func particle_mesh(size: float) -> BoxMesh:
@@ -24,24 +31,46 @@ static func particle_mesh(size: float) -> BoxMesh:
 	return mesh
 
 func play(kind: StringName, pos: Vector3, param: float) -> void:
+	var audio := Game.audio
 	match kind:
-		&"explosion":
-			_explosion(pos, param)
+		&"explosion":   # rocket; param = radius
+			_explosion(pos, param, EXPLOSION_COLOR)
+			audio.play_at(&"explosion", pos)
+		&"splash":      # water balloon; param = radius
+			_explosion(pos, param, SPLASH_COLOR)
+			audio.play_at(&"splash", pos)
 		&"pickup":
 			_burst(pos, POOF_COLOR, 16, 3.0, 0.5, 0.18)
 			_bubble(pos, POOF_COLOR, 0.4, 1.2, 0.25, 0.5)
-		&"fire":
+			audio.play_at(&"pickup", pos)
+		&"fire":        # rocket launch
 			_bubble(pos, FLASH_COLOR, 0.15, 0.45, 0.1, 0.9)
-		&"bump":
+			audio.play_at(&"launch", pos)
+		&"throw":       # water balloon launch
+			_bubble(pos, SPLASH_COLOR, 0.15, 0.4, 0.1, 0.7)
+			audio.play_at(&"launch", pos, 0.0, THROW_PITCH)
+		&"battery":     # battery pack used
+			_bubble(pos, BATTERY_COLOR, 0.3, 1.4, 0.3, 0.6)
+			audio.play_at(&"pickup", pos, 0.0, BATTERY_PITCH)
+		&"bump":        # car on car; param = bump strength
 			_burst(pos, SPARK_COLOR, 20, 9.0, 0.35, 0.1)
-		&"landing":
+			audio.play_at(&"bump", pos, _impact_db(param))
+		&"wall":        # car into a wall; param = impact speed
+			_burst(pos, SPARK_COLOR, 20, 9.0, 0.35, 0.1)
+			audio.play_at(&"wall", pos, _impact_db(param))
+		&"landing":     # perfect landing
 			_ring(pos, 1.0, 3.0, 0.4)
+			audio.play_at(&"perfect_landing", pos)
 		_:
 			push_warning("Effects: unknown effect '%s'" % kind)
 
-func _explosion(pos: Vector3, radius: float) -> void:
-	_bubble(pos, EXPLOSION_COLOR, radius * EXPLOSION_START_SCALE, radius, EXPLOSION_TIME, EXPLOSION_ALPHA)
-	_burst(pos, EXPLOSION_COLOR, 28, radius * 2.5, 0.7, 0.2)
+## Harder impacts are louder.
+func _impact_db(strength: float) -> float:
+	return linear_to_db(clampf(strength / LOUD_IMPACT, QUIET_IMPACT_GAIN, 1.0))
+
+func _explosion(pos: Vector3, radius: float, color: Color) -> void:
+	_bubble(pos, color, radius * EXPLOSION_START_SCALE, radius, EXPLOSION_TIME, EXPLOSION_ALPHA)
+	_burst(pos, color, 28, radius * 2.5, 0.7, 0.2)
 
 ## Expanding, fading unshaded sphere.
 func _bubble(pos: Vector3, color: Color, start_radius: float, end_radius: float, time: float, alpha: float) -> void:

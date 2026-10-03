@@ -46,7 +46,8 @@ func _physics_process(delta: float) -> void:
 	var hit: Variant = _sweep(from, to)
 	if hit != null or _age >= item.lifetime:
 		var at: Vector3 = hit if hit != null else to
-		match_node.explode(at, item.explosion_radius, item.knockback, item.up_knockback, shooter, item.spin, item.tumble)
+		var effect := &"splash" if item.kind == ItemDef.Kind.BALLOON else &"explosion"
+		match_node.explode(at, item.explosion_radius, item.knockback, item.up_knockback, shooter, item.spin, item.tumble, effect)
 		queue_free()
 		return
 	global_position = to
