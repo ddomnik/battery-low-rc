@@ -60,6 +60,11 @@ func _register_shader_globals() -> void:
 	RenderingServer.global_shader_parameter_add(&"focus_car_pos", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3.ZERO)
 	RenderingServer.global_shader_parameter_add(&"cutout_radius", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 	RenderingServer.global_shader_parameter_add(&"cutout_strength", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
+	RenderingServer.global_shader_parameter_add(&"trail_time", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
+
+## Clock for the tire trails' fade-out (see TireTrail.now).
+func _process(_delta: float) -> void:
+	RenderingServer.global_shader_parameter_set(&"trail_time", TireTrail.now())
 
 func _apply_window_mode() -> void:
 	if DisplayServer.get_name() == "headless":

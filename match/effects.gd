@@ -11,14 +11,34 @@ const EXPLOSION_ALPHA := 0.7
 const POOF_COLOR := Color(1.0, 1.0, 1.0)
 const FLASH_COLOR := Color(1.0, 0.85, 0.3)
 const SPARK_COLOR := Color(1.0, 0.9, 0.4)
-const BATTERY_COLOR := Color(0.45, 0.95, 0.35)
+const SHOCK_COLOR := Color(0.45, 0.85, 1.0)
 const RING_COLOR := Color(0.4, 0.95, 1.0)
 const SPLASH_COLOR := Color(0.35, 0.65, 1.0)
 const LOUD_IMPACT := 20.0            # bump strength / crash speed (m/s) that plays at full volume
 const QUIET_IMPACT_GAIN := 0.35      # softest impact volume (linear)
 const THROW_PITCH := 1.5             # balloon throw reuses the rocket launch sound, higher
-const BATTERY_PITCH := 0.8
+const SHOCK_PITCH := 1.8
+const SHOCK_FLASH_COLOR := Color(0.75, 0.93, 1.0)
+const SHOCK_LIGHT_ENERGY := 12.0     # flash light at the Shocker user …
+const SHOCK_HIT_LIGHT_ENERGY := 6.0  # … and at every shocked car
+const SHOCK_HIT_LIGHT_RANGE := 5.0
+const SHOCK_LIGHT_TIME := 0.35
+const SHOCK_ARC_TIME := 0.6          # bolt from the user to each shocked car
+const SHOCK_CRACKLES := 6            # short bolts from the user into the ground around it
+const SHOCK_CRACKLE_TIME := 0.3
+const SHOCK_CRACKLE_REACH := Vector2(0.3, 0.65)   # crackle length as a share of the Shocker reach
+const SPLAT_PITCH := 0.7
 const POP_PITCH := 1.6
+const CONFETTI_SHADER: Shader = preload("res://match/confetti.gdshader")
+const CONFETTI_MIN_SCALE := 0.5
+const CONFETTI_BURST_RADIUS := 0.35  # balloon pop: flakes start anywhere in the balloon …
+const CONFETTI_GRAVITY := 9.0        # … and fall properly, each with its own air drag
+const CONFETTI_DRAG := Vector2(2.0, 6.0)
+
+var _rng := RandomNumberGenerator.new()   # cosmetic only (crackle directions)
+
+func _ready() -> void:
+	_rng.randomize()
 
 ## A small unshaded box whose color comes from the particle color (vertex color), with alpha.
 static func particle_mesh(size: float) -> BoxMesh:
@@ -31,9 +51,19 @@ static func particle_mesh(size: float) -> BoxMesh:
 	mesh.material = mat
 	return mesh
 
-func play(kind: StringName, pos: Vector3, param: float) -> void:
+## from / to: nodes an effect follows (the Shocker bolts); see Match.play_effect.
+func play(kind: StringName, pos: Vector3, param: float, color: Color = Color.WHITE, from: Node3D = null,
+		to: Node3D = null) -> void:
 	var audio := Game.audio
 	match kind:
+		&"confetti":    # balloon popping into confetti of its color
+			_confetti(pos, color, 70, 8.0, 2.2)
+			audio.play_at(&"splash", pos, 0.0, POP_PITCH)
+		&"car_burst":   # sticky bomb victim breaking apart; color = the car's color
+			_explosion(pos, 3.5, EXPLOSION_COLOR)
+			_burst(pos, color, 40, 9.0, 1.1, 0.35)
+			_burst(pos, Color(0.15, 0.15, 0.18), 20, 7.0, 1.0, 0.25)
+			audio.play_at(&"explosion", pos)
 		&"explosion":   # rocket; param = radius
 			_explosion(pos, param, EXPLOSION_COLOR)
 			audio.play_at(&"explosion", pos)
@@ -50,9 +80,25 @@ func play(kind: StringName, pos: Vector3, param: float) -> void:
 		&"throw":       # water balloon launch
 			_bubble(pos, SPLASH_COLOR, 0.15, 0.4, 0.1, 0.7)
 			audio.play_at(&"launch", pos, 0.0, THROW_PITCH)
-		&"battery":     # battery pack used
-			_bubble(pos, BATTERY_COLOR, 0.3, 1.4, 0.3, 0.6)
-			audio.play_at(&"pickup", pos, 0.0, BATTERY_PITCH)
+		&"shock":       # Shocker activated; param = reach, from = the user
+			_light(pos + Vector3.UP, SHOCK_FLASH_COLOR, SHOCK_LIGHT_ENERGY, param * 1.5, SHOCK_LIGHT_TIME)
+			_bubble(pos, SHOCK_FLASH_COLOR, 0.5, 3.0, 0.18, 1.0, true)
+			_ring(pos + Vector3.DOWN * 0.5, 1.0, param, 0.35, SHOCK_COLOR)
+			_burst(pos, SHOCK_COLOR, 40, 12.0, 0.45, 0.08)
+			for i in SHOCK_CRACKLES:
+				var angle := TAU * (float(i) + _rng.randf_range(-0.3, 0.3)) / SHOCK_CRACKLES
+				var reach := param * _rng.randf_range(SHOCK_CRACKLE_REACH.x, SHOCK_CRACKLE_REACH.y)
+				var end := pos + Vector3(sin(angle), 0.0, cos(angle)) * reach + Vector3.DOWN * 0.3
+				_arc(from, null, pos + Vector3.UP * ShockArc.LIFT, end, SHOCK_CRACKLE_TIME)
+			audio.play_at(&"pickup", pos, 0.0, SHOCK_PITCH)
+		&"shock_arc":   # electric bolt from the Shocker user (from) to a shocked car (to, at pos)
+			_arc(from, to, pos + Vector3.UP * ShockArc.LIFT, pos + Vector3.UP * ShockArc.LIFT, SHOCK_ARC_TIME)
+			_light(pos + Vector3.UP, SHOCK_FLASH_COLOR, SHOCK_HIT_LIGHT_ENERGY, SHOCK_HIT_LIGHT_RANGE, SHOCK_LIGHT_TIME)
+			_bubble(pos, SHOCK_FLASH_COLOR, 0.3, 1.6, 0.15, 1.0, true)
+			_burst(pos, SHOCK_COLOR, 20, 5.0, 0.5, 0.07)
+		&"splat":       # oil / glue puddle appears; param = radius
+			_burst(pos + Vector3.UP * 0.2, color, 24, 4.0, 0.5, 0.18)
+			audio.play_at(&"splash", pos, 0.0, SPLAT_PITCH)
 		&"bump":        # car on car; param = bump strength
 			_burst(pos, SPARK_COLOR, 20, 9.0, 0.35, 0.1)
 			audio.play_at(&"bump", pos, _impact_db(param))
@@ -64,7 +110,7 @@ func play(kind: StringName, pos: Vector3, param: float) -> void:
 			_bubble(pos, POOF_COLOR, 0.2, 1.0, 0.15, 0.7)
 			audio.play_at(&"splash", pos, 0.0, POP_PITCH)
 		&"landing":     # perfect landing
-			_ring(pos, 1.0, 3.0, 0.4)
+			_ring(pos, 1.0, 3.0, 0.4, RING_COLOR)
 			audio.play_at(&"perfect_landing", pos)
 		_:
 			push_warning("Effects: unknown effect '%s'" % kind)
@@ -77,9 +123,12 @@ func _explosion(pos: Vector3, radius: float, color: Color) -> void:
 	_bubble(pos, color, radius * EXPLOSION_START_SCALE, radius, EXPLOSION_TIME, EXPLOSION_ALPHA)
 	_burst(pos, color, 28, radius * 2.5, 0.7, 0.2)
 
-## Expanding, fading unshaded sphere.
-func _bubble(pos: Vector3, color: Color, start_radius: float, end_radius: float, time: float, alpha: float) -> void:
+## Expanding, fading unshaded sphere. additive = glowing flash.
+func _bubble(pos: Vector3, color: Color, start_radius: float, end_radius: float, time: float, alpha: float,
+		additive: bool = false) -> void:
 	var mat := _fade_material(color, alpha)
+	if additive:
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	var sphere := SphereMesh.new()
 	sphere.radius = 1.0
 	sphere.height = 2.0
@@ -95,9 +144,32 @@ func _bubble(pos: Vector3, color: Color, start_radius: float, end_radius: float,
 	tw.tween_property(mat, "albedo_color:a", 0.0, time)
 	tw.chain().tween_callback(root.queue_free)
 
+## Short bright light that dies away (flashes light up the ground and the cars around).
+func _light(pos: Vector3, color: Color, energy: float, light_range: float, time: float) -> void:
+	var light := OmniLight3D.new()
+	light.light_color = color
+	light.light_energy = energy
+	light.omni_range = light_range
+	light.shadow_enabled = false
+	var root := _root(pos)
+	root.add_child(light)
+	var tw := root.create_tween()
+	tw.tween_property(light, "light_energy", 0.0, time).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+	tw.tween_callback(root.queue_free)
+
+## Crackling electric bolt; follows the nodes while they exist, else the fixed points.
+func _arc(from: Node3D, to: Node3D, from_point: Vector3, to_point: Vector3, time: float) -> void:
+	var arc := ShockArc.new()
+	arc.from_node = from
+	arc.to_node = to
+	arc.from_point = from_point
+	arc.to_point = to_point
+	arc.duration = time
+	add_child(arc)
+
 ## Flat expanding ring on the ground.
-func _ring(pos: Vector3, start_radius: float, end_radius: float, time: float) -> void:
-	var mat := _fade_material(RING_COLOR, 0.8)
+func _ring(pos: Vector3, start_radius: float, end_radius: float, time: float, color: Color) -> void:
+	var mat := _fade_material(color, 0.8)
 	var torus := TorusMesh.new()
 	torus.inner_radius = 0.9
 	torus.outer_radius = 1.0
@@ -112,6 +184,61 @@ func _ring(pos: Vector3, start_radius: float, end_radius: float, time: float) ->
 	tw.tween_property(mi, "scale", Vector3(end_radius, 0.05, end_radius), time).set_ease(Tween.EASE_OUT)
 	tw.tween_property(mat, "albedo_color:a", 0.0, time)
 	tw.chain().tween_callback(root.queue_free)
+
+## Paper confetti: flat flakes that tumble and flutter down. A white color means every color.
+func _confetti(pos: Vector3, color: Color, amount: int, speed: float, lifetime: float) -> void:
+	var p := confetti_particles(color)
+	p.one_shot = true
+	p.explosiveness = 0.9
+	p.randomness = 1.0
+	p.amount = amount
+	p.lifetime = lifetime
+	p.lifetime_randomness = 0.5
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = CONFETTI_BURST_RADIUS
+	p.spread = 180.0
+	p.initial_velocity_min = speed * 0.15
+	p.initial_velocity_max = speed
+	p.gravity = Vector3(0.0, -CONFETTI_GRAVITY, 0.0)
+	p.damping_min = CONFETTI_DRAG.x
+	p.damping_max = CONFETTI_DRAG.y
+	var root := _root(pos)
+	root.add_child(p)
+	p.emitting = true
+	root.create_tween().tween_callback(root.queue_free).set_delay(lifetime + 0.1)
+
+## Shared confetti look (also used by the podium): small flat flakes tumbling in all directions (shader), slow fall.
+static func confetti_particles(color: Color) -> CPUParticles3D:
+	var mat := ShaderMaterial.new()
+	mat.shader = CONFETTI_SHADER
+	var flake := BoxMesh.new()
+	flake.size = Vector3(0.28, 0.01, 0.18)
+	flake.material = mat
+	var p := CPUParticles3D.new()
+	p.mesh = flake
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF   # shadows read as dark specks from above
+	p.scale_amount_min = CONFETTI_MIN_SCALE   # flakes from half size …
+	p.scale_amount_max = 1.0                  # … to full size
+	p.direction = Vector3.UP
+	p.spread = 70.0
+	p.gravity = Vector3(0.0, -4.0, 0.0)
+	p.damping_min = 1.5
+	p.damping_max = 3.0
+	p.particle_flag_rotate_y = true
+	p.angular_velocity_min = -540.0
+	p.angular_velocity_max = 540.0
+	p.angle_min = 0.0
+	p.angle_max = 360.0
+	var colors := Gradient.new()
+	if color == Color.WHITE:
+		colors.colors = PackedColorArray([Color("#FF595E"), Color("#FFCA3A"), Color("#8AC926"), Color("#1982C4"), Color("#6A4C93"), Color("#FF924C"), Color("#4CC9F0")])
+		colors.offsets = PackedFloat32Array([0.0, 0.17, 0.33, 0.5, 0.67, 0.83, 1.0])
+		colors.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
+	else:
+		colors.colors = PackedColorArray([color.darkened(0.25), color, color.lightened(0.35)])
+		colors.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	p.color_initial_ramp = colors
+	return p
 
 ## One-shot particle burst in all directions.
 func _burst(pos: Vector3, color: Color, amount: int, speed: float, lifetime: float, size: float) -> void:

@@ -43,7 +43,8 @@ func _run() -> void:
 	await _pickups()
 	await _magnet()
 	await _explosion_falloff()
-	await _battery_and_hud()
+	await _new_items_and_hud()
+	await _oil_handling()
 	await _catch_up_weights()
 	_sound_bank()
 
@@ -74,8 +75,20 @@ func _aim_raycast() -> void:
 	_remove(dummy)
 
 func _turret() -> void:
-	_header("Turret follows the aim point")
+	_header("Held item model on the roof, aimed items turn to the aim point")
+	var v := _car.visual
+	_check("no cannon on the car", v.find_child("Turret", true, false), v.find_child("Turret", true, false) == null)
+	_check("empty-handed: no item model", v.find_child("ItemModel", true, false), v.find_child("ItemModel", true, false) == null)
+	var without_muzzle: Array[StringName] = []
+	for d in _m.item_defs:
+		var model := ItemModels.build(d)
+		if model.find_child("Muzzle", true, false) == null:
+			without_muzzle.append(d.id)
+		model.free()
+	_check("every item has a model with a muzzle", without_muzzle, without_muzzle.is_empty())
+	_car.set_held_item(_item(&"bottle_rocket"))
 	await _place(Vector3(-30.0, 0.8, -25.0), Vector3.FORWARD)
+	_check("holding an item mounts its model", v.find_child("ItemModel", true, false) != null, v.find_child("ItemModel", true, false) != null)
 	_input.aim_point = _car.global_position + Vector3(8.0, 0.0, 0.0)
 	await _ticks(30)
 	_check("parked: turret points at the aim (err deg)", _turret_error(), _turret_error() < 3.0)
@@ -94,6 +107,16 @@ func _turret() -> void:
 	_input.aim_point = Vector3(8.0, 0.0, 1.0)
 	await _ticks(40)
 	_check("on the 14° ramp: turret points at the aim (err deg)", _turret_error(), _turret_error() < 5.0)
+	var gameplay_muzzle := _car.get_muzzle_position()
+	_check("gameplay muzzle = the model's muzzle (m)", gameplay_muzzle.distance_to(v.muzzle.global_position),
+		gameplay_muzzle.distance_to(v.muzzle.global_position) < 0.05)
+	_car.set_held_item(_item(&"shocker"))
+	await _ticks(40)
+	var forward_err := rad_to_deg((v.find_child("ItemMount", true, false) as Node3D).rotation.y)
+	_check("Shocker sits facing forward (deg)", forward_err, absf(forward_err) < 2.0)
+	_car.set_held_item(null)
+	await get_tree().process_frame
+	_check("used up: the model is gone", v.muzzle, v.muzzle == null)
 
 func _rocket() -> void:
 	_header("Bottle rocket flies straight to the reticle")
@@ -235,35 +258,260 @@ func _explosion_falloff() -> void:
 	for d: Car in [near, mid, outside]:
 		_remove(d)
 
-func _battery_and_hud() -> void:
-	_header("Battery pack and HUD item slot")
+func _new_items_and_hud() -> void:
+	_header("Oil slick, sticky glue, shocker, blast, HUD item slot")
 	var label := _m.get_node("UI/Hud/ItemSlot/ItemLabel") as Label
-	_car.set_battery(0.2)
-	_car.set_held_item(_item(&"battery_pack"))
+	_check("battery pack is gone from the items", _item(&"battery_pack"), _item(&"battery_pack") == null)
+
+	# Oil: thrown, leaves a slippery puddle.
+	await _place(Vector3(-30.0, 0.8, -25.0), Vector3.FORWARD)
+	_car.set_held_item(_item(&"oil_slick"))
 	await get_tree().physics_frame
-	_check("HUD shows the held item", label.text, label.text == "Battery Pack")
+	_check("HUD shows the held item", label.text, label.text == "Oil Slick")
+	var oil_at := Vector3(-30.0, 0.0, -37.0)
+	_input.aim_point = oil_at
+	await _ticks(10)
+	_input.fire = true
+	await _ticks(90)
+	var oil := _puddle(ItemDef.Kind.OIL)
+	_check("oil lands as a puddle at the reticle", oil != null, oil != null and _flat_dist(oil.global_position, oil_at) < 0.7)
+	_check("HUD slot empty after use", label.text, label.text == "—" and _car.held_item == null)
+	var decals := oil.find_children("*", "Decal", false, false)
+	_check("the puddle is a cluster of blobs (decals on the world layer only)", "%d blobs" % oil.blob_count(),
+		oil.blob_count() >= 5 and decals.size() == oil.blob_count() and (decals[0] as Decal).cull_mask == Layers.RENDER_WORLD)
+	var edge_spot := _half_on_spot(oil)
+	_check("found a spot with only the left tires on the oil", edge_spot, edge_spot != Vector3.INF)
+	await _place(edge_spot + Vector3.UP * 0.8, Vector3.FORWARD)
+	_check("half on the oil: only the left tires get oiled", _car.wheel_oil,
+		_car.wheel_oil[0] > 0.0 and _car.wheel_oil[2] > 0.0 and _car.wheel_oil[1] == 0.0 and _car.wheel_oil[3] == 0.0)
+	await _place(Vector3(-30.0, 0.8, -37.0), Vector3.BACK)
+	_check("on the oil: all four tires oiled (grip × %.2f each)" % _car.tuning.oil_grip_mult, _car.wheel_oil,
+		_car.coated_share(_car.wheel_oil) == 1.0)
+	_input.throttle = 1.0
+	await _ticks(60)
+	_input.throttle = 0.0
+	var splatter := _car.visual.get_node("WheelSplatter2") as GPUParticles3D
+	_check("driven off the puddle, the tires stay oiled", "%.1f m away, %s" % [_flat_dist(_car.global_position, oil_at), _car.wheel_oil],
+		_flat_dist(_car.global_position, oil_at) > oil.radius + 1.0 and _car.coated_share(_car.wheel_oil) == 1.0)
+	_check("oiled tires fling drops, more when fast", "%s, ratio %.2f" % [splatter.emitting, splatter.amount_ratio],
+		splatter.emitting and splatter.amount_ratio > 0.5)
+	var trail := _car.visual.get_node("TireTrail2") as TireTrail
+	var track_len := 0.0
+	for v in trail.vertices():
+		track_len = maxf(track_len, _flat_dist(v, oil_at))
+	_check("each oiled tire leaves a track behind (reaches m from the puddle center)", track_len, track_len > oil.radius + 1.0)
+	await _ticks(int(_car.tuning.wheel_coating_time * 60.0))
+	_check("the oil wears off after %.0f s" % _car.tuning.wheel_coating_time, "%s, drops %s" % [_car.wheel_oil, splatter.emitting],
+		_car.coated_share(_car.wheel_oil) == 0.0 and not splatter.emitting)
+	_check("the track stays on the ground a while longer", trail.chunk_count(), trail.chunk_count() > 0)
+
+	# Glue: thrown, slows cars right down.
+	_car.set_held_item(_item(&"sticky_glue"))
+	var glue_at := Vector3(-22.0, 0.0, -25.0)
+	_input.aim_point = glue_at
+	await _ticks(10)
+	_input.fire = true
+	await _ticks(90)
+	var glue := _puddle(ItemDef.Kind.GLUE)
+	_check("glue lands as a puddle", glue != null, glue != null)
+	_check("every puddle gets its own random shape", "%d / %d blobs" % [oil.blob_count(), glue.blob_count()],
+		oil.blob_count() != glue.blob_count() or oil._blob_radii[0] != glue._blob_radii[0])
+	await _place(Vector3(-22.0, 0.8, -25.0), Vector3.FORWARD)
+	_input.throttle = 1.0
+	var glued_speed := 0.0
+	var in_glue_ticks := 0
+	for i in 120:
+		await get_tree().physics_frame
+		if _car.coated_share(_car.wheel_glue) == 1.0:
+			in_glue_ticks += 1
+			glued_speed = maxf(glued_speed, _car.linear_velocity.length())
+	_input.throttle = 0.0
+	_check("full throttle on glued tires stays slow (top speed × %.1f)" % _car.tuning.glue_speed_mult, glued_speed,
+		in_glue_ticks == 120 and glued_speed < _car.tuning.max_speed * (_car.tuning.glue_speed_mult + 0.05))
+	_check("…even after driving off the glue", _flat_dist(_car.global_position, glue_at), _flat_dist(_car.global_position, glue_at) > glue.radius)
+
+	# Shocker: slows cars within its reach.
+	await _place(Vector3(-30.0, 0.8, -12.0), Vector3.FORWARD)
+	var near := await _dummy(Vector3(-25.0, 0.8, -12.0))
+	var far := await _dummy(Vector3(-17.0, 0.8, -12.0))
+	_car.set_held_item(_item(&"shocker"))
+	_effects.clear()
+	var shock_score0: int = _m.scores[_car.player_id]
 	_input.fire = true
 	await _ticks(3)
-	_check("battery pack adds 50 %", _car.battery, is_equal_approx(_car.battery, 0.7))
-	_check("HUD slot empty after use", label.text, label.text == "—" and _car.held_item == null)
-	_press("debug_give_item_3")
+	var shock_time := _item(&"shocker").effect_time
+	_check("a shocker hit scores a point for the user", _m.scores[_car.player_id] - shock_score0, _m.scores[_car.player_id] - shock_score0 == 1)
+	_check("shocker stalls the car 5 m away for %.0f s, not the one 13 m away" % shock_time,
+		"%.2f / %.2f s" % [near.shock_left, far.shock_left], near.shock_left > shock_time - 0.1 and far.shock_left == 0.0)
+	var arc_to_near := false
+	for e in _effects:
+		if e["kind"] == &"shock_arc" and _flat_dist(e["pos"], near.global_position) < 1.0:
+			arc_to_near = true
+	_check("flash + an electric bolt to the shocked car only", "%d bolt(s)" % _count(&"shock_arc"),
+		_count(&"shock") == 1 and _count(&"shock_arc") == 1 and arc_to_near)
+	var bolts := _m.find_children("*", "ShockArc", true, false).size()
+	await _ticks(int(Effects.SHOCK_ARC_TIME * 60.0) + 5)
+	_check("bolts crackle briefly, then vanish", "%d → %d" % [bolts, _m.find_children("*", "ShockArc", true, false).size()],
+		bolts > Effects.SHOCK_CRACKLES and _m.find_children("*", "ShockArc", true, false).is_empty())
+
+	# Blast: throws nearby cars away and up, not the user.
+	near.teleport_to(Transform3D(Basis.IDENTITY, Vector3(-27.0, 0.8, -12.0)))   # 3 m away
+	await _ticks(30)
+	_car.set_held_item(_item(&"blast"))
+	_input.fire = true
+	await _ticks(3)
+	_check("blast throws the car 3 m away off and up", near.linear_velocity, near.linear_velocity.length() > 6.0 and near.linear_velocity.y > 2.0)
+	_check("the user is not blasted", _car.linear_velocity.length(), _car.linear_velocity.length() < 1.0)
+	for d: Car in [near, far]:
+		_remove(d)
+
+	_press("debug_give_item_2")
 	await get_tree().physics_frame
-	_check("debug key 3 gives the water balloon", _car.held_item.id if _car.held_item != null else &"none", _car.held_item != null and _car.held_item.id == &"water_balloon")
+	_check("debug key 2 gives the water balloon", _car.held_item.id if _car.held_item != null else &"none", _car.held_item != null and _car.held_item.id == &"water_balloon")
 	_car.set_held_item(null)
+
+func _oil_handling() -> void:
+	_header("Oiled tires: faster spin, sliding on slopes, tracks on slopes")
+	var clean := await _turn_test(false)
+	var oiled := await _turn_test(true)
+	_check("oiled: spins faster in a turn (peak yaw rad/s, clean → oiled)", "%.2f → %.2f" % [clean.x, oiled.x],
+		oiled.x > clean.x * 1.3)
+	_check("oiled: keeps spinning after the turn (yaw rad/s 1/3 s later)", "%.2f → %.2f" % [clean.y, oiled.y],
+		oiled.y > 0.3 and oiled.y > clean.y * 3.0)
+
+	# Shocker stall: full throttle (and boost) from standstill gives nothing for the shock time, then the car
+	# pulls away at full strength; a car already moving keeps its speed (no top speed limit).
+	var shock_time := _item(&"shocker").effect_time
+	await _place(Vector3(28.0, 0.8, 30.0), Vector3.FORWARD)
+	_car.apply_shock(shock_time)
+	_input.throttle = 1.0
+	await _ticks(int(shock_time * 60.0) - 2)
+	var stalled_speed := _car.linear_velocity.length()
+	await _ticks(30)
+	var moving_speed := _car.linear_velocity.length()
+	_input.throttle = 0.0
+	_check("shocked: no drive for %.0f s, then it pulls away (m/s)" % shock_time,
+		"%.2f → %.2f" % [stalled_speed, moving_speed], stalled_speed < 0.1 and moving_speed > 2.0)
+	await _place(Vector3(28.0, 0.8, 30.0), Vector3.FORWARD)
+	_car.linear_velocity = Vector3.FORWARD * 16.0
+	await _ticks(2)
+	var hit_speed := _car.forward_speed
+	_car.apply_shock(shock_time)
+	_input.throttle = 1.0
+	await _ticks(int(shock_time * 30.0))
+	var half_speed := _car.forward_speed
+	await _ticks(int(shock_time * 30.0) - 2)
+	var end_speed := _car.forward_speed
+	_input.throttle = 0.0
+	_check("shocked at speed: runs down linearly to 0 over %.0f s, even on full throttle (m/s)" % shock_time,
+		"%.1f → %.1f → %.1f" % [hit_speed, half_speed, end_speed],
+		absf(half_speed - hit_speed * 0.5) < 1.5 and end_speed < 1.0)
+
+	# A puddle on ramp A lies on the slope.
+	var slope_puddle_at := Vector3(0.0, 1.5, 0.0)
+	_m.spawn_puddle(_item(&"oil_slick"), slope_puddle_at)
+	var slope_puddle: Puddle = null
+	for n in _m.get_node("Projectiles").get_children():
+		if n is Puddle and (n as Puddle).global_position.distance_to(slope_puddle_at) < 1.0:
+			slope_puddle = n as Puddle
+	var tilt := rad_to_deg(slope_puddle._blob_normals[0].angle_to(Vector3.UP)) if slope_puddle != null else 0.0
+	var space0 := get_viewport().world_3d.direct_space_state
+	var uphill_hit := space0.intersect_ray(PhysicsRayQueryParameters3D.create(Vector3(0.0, 10.0, -1.0), Vector3(0.0, -1.0, -1.0), Layers.WORLD))
+	_check("a puddle on the 14° ramp lies on the slope (tilt °, covers the ramp 1 m uphill)", "%.1f" % tilt,
+		slope_puddle != null and absf(tilt - 14.0) < 1.0 and slope_puddle.covers(uphill_hit.position))
+	if slope_puddle != null:
+		slope_puddle.queue_free()
+	await _ticks(2)
+
+	# Parked on ramp A (14°): facing uphill, then across it.
+	for facing: Vector3 in [Vector3.FORWARD, Vector3.RIGHT]:
+		await _place_on_surface(Vector3(0.0, 0.0, 1.0), facing)
+		var start := _car.global_position
+		await _ticks(30)
+		var clean_slide := _car.global_position.distance_to(start)
+		_car.wheel_oil.fill(_car.tuning.wheel_coating_time)
+		start = _car.global_position
+		await _ticks(60)
+		var oiled_slide := _car.global_position.distance_to(start)
+		var downhill := _car.global_position.z > start.z
+		_check("parked %s the 14° ramp: clean holds, oiled slides downhill (m in 1 s)" % ("up" if facing == Vector3.FORWARD else "across"),
+			"%.2f / %.2f" % [clean_slide, oiled_slide], clean_slide < 0.05 and oiled_slide > 0.5 and downhill)
+
+	# Tracks lie on the slope: drive oiled up ramp A.
+	await _place_on_surface(Vector3(0.0, 0.0, 5.0), Vector3.FORWARD)
+	_car.wheel_oil.fill(_car.tuning.wheel_coating_time)
+	_input.throttle = 0.7
+	await _ticks(45)
+	_input.throttle = 0.0
+	await _ticks(5)
+	var space := get_viewport().world_3d.direct_space_state
+	var worst := 0.0
+	var highest := 0.0
+	for i in Car.WHEELS:
+		var trail := _car.visual.get_node("TireTrail%d" % i) as TireTrail
+		for v in trail.vertices():
+			var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(v + Vector3.UP, v + Vector3.DOWN, Layers.WORLD))
+			if not hit.is_empty():
+				worst = maxf(worst, absf(v.y - (hit.position as Vector3).y - TireTrail.LIFT))
+				highest = maxf(highest, v.y)
+	_check("tracks follow the ramp surface (worst height error m)", "%.3f, up to y %.1f" % [worst, highest],
+		worst < 0.06 and highest > 0.8)
+	_car.wheel_oil.fill(0.0)
+
+## A car position (facing −Z) where both left wheel contacts are on the puddle and both right ones are not.
+func _half_on_spot(p: Puddle) -> Vector3:
+	var c := p.global_position
+	for dz: float in [0.0, 0.6, -0.6, 1.2, -1.2]:
+		for step in 120:
+			var x := c.x + step * 0.05
+			var spot := Vector3(x, c.y, c.z + dz)
+			if p.covers(spot + Vector3(-0.5, 0.0, -0.7)) and p.covers(spot + Vector3(-0.5, 0.0, 0.7)) \
+					and not p.covers(spot + Vector3(0.5, 0.0, -0.7)) and not p.covers(spot + Vector3(0.5, 0.0, 0.7)):
+				return spot
+	return Vector3.INF
+
+## Full steer at speed on open floor. Returns (peak yaw rate while steering, yaw rate 20 ticks after letting go).
+func _turn_test(oiled: bool) -> Vector2:
+	await _place(Vector3(28.0, 0.8, 30.0), Vector3.FORWARD)
+	_input.throttle = 1.0
+	await _ticks(40)
+	if oiled:
+		_car.wheel_oil.fill(_car.tuning.wheel_coating_time)
+	_input.steer = 1.0
+	var peak := 0.0
+	for i in 40:
+		await get_tree().physics_frame
+		peak = maxf(peak, absf(_car.angular_velocity.y))
+	_input.steer = 0.0
+	_input.throttle = 0.0
+	await _ticks(20)
+	var after := absf(_car.angular_velocity.y)
+	_car.wheel_oil.fill(0.0)
+	return Vector2(peak, after)
+
+func _puddle(kind: ItemDef.Kind) -> Puddle:
+	for n in _m.get_node("Projectiles").get_children():
+		if n is Puddle and (n as Puddle).kind == kind:
+			return n as Puddle
+	return null
 
 func _catch_up_weights() -> void:
 	_header("Catch-up roll weights")
 	var other := await _dummy(Vector3(-20.0, 0.8, -20.0))
 	_m.scores[_car.player_id] = 5
 	_m.scores[other.player_id] = 0
-	_check("leading: rocket_trio weight 0", _m.item_weights(_car), _m.item_weights(_car)[3] == 0.0)
+	var trio := _m.item_defs.find(_item(&"rocket_trio"))
+	_check("leading: rocket_trio weight 0", _m.item_weights(_car), _m.item_weights(_car)[trio] == 0.0)
 	_m.scores[_car.player_id] = 0
 	_m.scores[other.player_id] = 5
 	var w := _m.item_weights(_car)
 	var total := 0.0
+	var expected_total := 0.0
 	for x in w:
 		total += x
-	_check("last: rocket_trio ≈ 40 %", w[3] / total, absf(w[3] / total - 0.4) < 0.01)
+	for d in _m.item_defs:
+		expected_total += d.weight_last
+	_check("last: weights are the weight_last values", w[trio] / total, absf(w[trio] / total - _item(&"rocket_trio").weight_last / expected_total) < 0.001)
 	_remove(other)
 
 ## Sound files: every kind resolves, variations rotate, loops loop, music is found. (Headless plays nothing.)
@@ -337,8 +585,8 @@ func _remove(c: Car) -> void:
 ## Angle between the barrel and the aim direction, measured in the car's own plane (the turret yaws in it).
 func _turret_error() -> float:
 	var v := _car.visual
-	var barrel := v.to_local(v.muzzle.global_position) - v.turret_mount
-	var to_aim := v.to_local(_car.last_aim_point) - v.turret_mount
+	var barrel := v.to_local(v.muzzle.global_position) - v.item_mount
+	var to_aim := v.to_local(_car.last_aim_point) - v.item_mount
 	barrel.y = 0.0
 	to_aim.y = 0.0
 	return rad_to_deg(barrel.angle_to(to_aim))

@@ -41,6 +41,10 @@ func on_round_end() -> void:
 func on_scoring_hit(_attacker: Car, _victim: Car) -> void:
 	pass
 
+## The car took damage: a ram (amount = bump strength) or a blast (amount = horizontal knockback at its distance).
+func on_damage(_car: Car, _amount: float) -> void:
+	pass
+
 ## The car fell off the map. Return true to respawn it, false if the mode eliminated it.
 func on_fell_off(_car: Car) -> bool:
 	return true

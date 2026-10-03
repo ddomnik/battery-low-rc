@@ -17,8 +17,16 @@ const ROOF_LIFT := 1.0                      # upside-down cars are dropped from 
 const HOP_SPEED := 6.0                      # m/s up → ~0.9 m hop (gravity × 2)
 const HOP_INTERVAL := 1.0
 const HOP_SPIN := 1.2                       # rad/s yaw twist per hop, alternating direction
+const WOBBLE_ANGLE := 0.14                  # rad; 2nd and 3rd place rock from side to side (visual only)
+const WOBBLE_SPEED := 3.0
+const CONFETTI_AMOUNT := 160                # per cannon
+const CONFETTI_CANNONS: Array[float] = [-4.0, 0.0, 4.0]   # x of the cannons behind the podium
+const CONFETTI_BEHIND := -3.0               # −z = behind the podium as seen from the camera
+const CONFETTI_SPEED := Vector2(9.0, 14.0)  # launch speed range (m/s), straight up with some spread
 
 var winner: Car = null
+var _runners_up: Array[Car] = []      # 2nd and 3rd: their visuals wobble
+var _time: float = 0.0
 var _hop_left: float = 0.0
 var _hop_dir: float = 1.0
 
@@ -33,6 +41,22 @@ func _ready() -> void:
 		number.outline_size = 24
 		number.position = Vector3(STEP_X[i], h * 0.5, STEP_SIZE.y * 0.5 + 0.02)   # on the front face
 		add_child(number)
+	# Confetti cannons behind the podium shoot flakes up into the air; they flutter down over the podium.
+	for x in CONFETTI_CANNONS:
+		var confetti := Effects.confetti_particles(Color.WHITE)
+		confetti.name = "ConfettiCannon"
+		confetti.amount = CONFETTI_AMOUNT
+		confetti.lifetime = 4.5
+		confetti.direction = Vector3(0.0, 1.0, 0.25)   # up and slightly toward the camera
+		confetti.spread = 18.0
+		confetti.initial_velocity_min = CONFETTI_SPEED.x
+		confetti.initial_velocity_max = CONFETTI_SPEED.y
+		confetti.gravity = Vector3(0.0, -6.0, 0.0)
+		confetti.damping_min = 2.0
+		confetti.damping_max = 3.5
+		confetti.position = Vector3(x, 0.3, CONFETTI_BEHIND)
+		add_child(confetti)
+		confetti.emitting = true
 
 ## ranking is best first. Places the top three on the steps and lays everyone else on their roof in front.
 func place_cars(ranking: Array[Car]) -> void:
@@ -49,8 +73,18 @@ func place_cars(ranking: Array[Car]) -> void:
 			var x := (slot - (rest - 1) * 0.5) * ROW_SPACING
 			xf = Transform3D(upside_down, to_global(Vector3(x, ROOF_LIFT, ROW_OFFSET)))
 		car.teleport_to(xf)
+	for car in ranking:
+		car.visual.mute_engine = true   # quiet ceremony
 	winner = ranking[0] if not ranking.is_empty() else null
+	_runners_up.assign(ranking.slice(1, 3))
 	_hop_left = HOP_INTERVAL
+
+func _process(delta: float) -> void:
+	_time += delta
+	for i in _runners_up.size():
+		var car := _runners_up[i]
+		if is_instance_valid(car):
+			car.visual.body_roll = sin(_time * WOBBLE_SPEED + i * PI) * WOBBLE_ANGLE
 
 ## The winner hops whenever it is standing on all four wheels.
 func _physics_process(delta: float) -> void:

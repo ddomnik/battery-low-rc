@@ -13,7 +13,7 @@ signal wall_hit(car: Car, position: Vector3, impact_speed: float)
 signal respawn_requested(car: Car)
 
 const WHEELS := 4
-const MUZZLE_FALLBACK_HEIGHT := 0.8   # used only if the visual has no turret
+const MUZZLE_FALLBACK_HEIGHT := 0.8   # used only without a visual or an item
 
 ## Driving intent for one physics tick, resolved from CarInput.
 class DriveCommand:
@@ -35,6 +35,11 @@ var is_boosting: bool = false
 var is_drifting: bool = false
 var frozen: bool = true
 var eliminated: bool = false            # out of the round: hidden, no collisions, ignored by everyone
+var knockback_multiplier: float = 1.0   # scales knockback this car receives (Last on table damage %)
+var wheel_oil: Array[float] = [0.0, 0.0, 0.0, 0.0]    # seconds each wheel stays oiled
+var wheel_glue: Array[float] = [0.0, 0.0, 0.0, 0.0]   # seconds each wheel stays glued
+var shock_left: float = 0.0             # seconds of Shocker stall left: no drive, speed runs down to zero
+var _shock_decel: float = 0.0           # m/s² that takes the speed at the hit to zero over the shock time
 var pad_overlaps: int = 0               # charging pads this car is inside (pads count it up and down)
 
 # Read-only caches for visuals, HUD, debug, bots.
@@ -48,6 +53,8 @@ var last_landing_reward: float = 0.0    # 0..1 share of the maximum reward of th
 var wheel_grounded: Array[bool] = [false, false, false, false]
 var wheel_spring_len: Array[float] = [0.0, 0.0, 0.0, 0.0]
 var wheel_force: Array[float] = [0.0, 0.0, 0.0, 0.0]   # suspension force per wheel (N), for debug draw
+var wheel_contact: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO, Vector3.ZERO, Vector3.ZERO]   # ground point under each wheel
+var wheel_normal: Array[Vector3] = [Vector3.UP, Vector3.UP, Vector3.UP, Vector3.UP]            # ground normal there
 
 @onready var visual: CarVisual = $Visual
 
@@ -67,6 +74,7 @@ var _pending_bumps: Array[Dictionary] = []
 var _pending_touches: Array[Car] = []
 var _bump_cooldowns: Dictionary = {}             # other car instance id → seconds left
 var _pending_teleport: Variant = null       # Transform3D or null
+var _boost_locked: bool = false             # battery ran dry while boosting: release boost before it works again
 var _upside_down_time: float = 0.0
 var _reset_cooldown: float = 0.0
 var _stuck_timer: float = 0.0
@@ -113,6 +121,8 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		state.linear_velocity = Vector3.ZERO
 		state.angular_velocity = Vector3.ZERO
 		_pending_teleport = null
+		wheel_oil.fill(0.0)
+		wheel_glue.fill(0.0)
 		_was_airborne = false
 		_landing_window = 0.0
 		air_time = 0.0
@@ -127,6 +137,9 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var fwd := -xf.basis.z
 	var right := xf.basis.x
 
+	for i in WHEELS:
+		wheel_oil[i] = maxf(0.0, wheel_oil[i] - dt)
+		wheel_glue[i] = maxf(0.0, wheel_glue[i] - dt)
 	_sample_wheels(state, xf, up)
 	forward_speed = state.linear_velocity.dot(fwd)
 	lateral_speed = state.linear_velocity.dot(right)
@@ -180,7 +193,7 @@ func _detect_bumps(state: PhysicsDirectBodyState3D) -> void:
 		var strength := tuning.bump_base + attack * tuning.bump_speed_scale
 		if other.is_boosting:
 			strength *= tuning.bump_boost_mult
-		state.apply_central_impulse((dir * strength + Vector3.UP * tuning.bump_pop) * mass)
+		state.apply_central_impulse((dir * strength + Vector3.UP * tuning.bump_pop) * mass * knockback_multiplier)
 		# Cosmetic spin on the authority (spec §7.3.6), so plain randf is fine here.
 		state.apply_torque_impulse(Vector3.UP * randf_range(-1.0, 1.0) * tuning.bump_spin * tuning.inertia.y)
 		_bump_cooldowns[id] = tuning.bump_cooldown
@@ -232,6 +245,13 @@ func _sample_wheels(state: PhysicsDirectBodyState3D, xf: Transform3D, up: Vector
 		grounded_count += 1
 		var hit_pos: Vector3 = hit.position
 		var hit_normal: Vector3 = hit.normal
+		wheel_contact[i] = hit_pos
+		wheel_normal[i] = hit_normal
+		match Puddle.kind_at(hit_pos):
+			ItemDef.Kind.OIL:
+				wheel_oil[i] = tuning.wheel_coating_time
+			ItemDef.Kind.GLUE:
+				wheel_glue[i] = tuning.wheel_coating_time
 		wheel_spring_len[i] = clampf(from.distance_to(hit_pos) - tuning.wheel_radius, 0.0, tuning.suspension_rest_length)
 		normal_sum += hit_normal
 	_ground_normal = normal_sum.normalized() if grounded_count > 0 else Vector3.UP
@@ -308,33 +328,56 @@ func _apply_suspension(state: PhysicsDirectBodyState3D, xf: Transform3D, up: Vec
 
 func _apply_drive(state: PhysicsDirectBodyState3D, fwd: Vector3, dt: float) -> void:
 	var fwd_g := (fwd - _ground_normal * fwd.dot(_ground_normal)).normalized()  # follows slopes
-	var max_speed := tuning.max_speed * (tuning.boost_speed_mult if is_boosting else 1.0)
+	var slow := _speed_mult()
+	var max_speed := tuning.max_speed * (tuning.boost_speed_mult if is_boosting else 1.0) * slow
 	var stop_speed := tuning.direction_change_speed
 	var t := _drive.throttle
 	var accel := 0.0
+	var traction := lerpf(1.0, tuning.oil_brake_mult, coated_share(wheel_oil))   # oiled tires barely brake
+	var stalled := shock_left > 0.0
 	_parked = false
 	if t > 0.01:
 		if forward_speed < -stop_speed:
-			accel = tuning.brake_decel
-		else:
-			accel = tuning.acceleration * t * clampf(1.0 - forward_speed / max_speed, 0.0, 1.0)
+			accel = tuning.brake_decel * traction
+		elif not stalled:
+			accel = tuning.acceleration * slow * t * clampf(1.0 - forward_speed / max_speed, 0.0, 1.0)
 	elif t < -0.01:
 		if forward_speed > stop_speed:
-			accel = -tuning.brake_decel
-		else:
+			accel = -tuning.brake_decel * traction
+		elif not stalled:
 			accel = -tuning.reverse_accel * -t * clampf(1.0 + forward_speed / tuning.reverse_max_speed, 0.0, 1.0)
 	elif absf(forward_speed) < tuning.hold_brake_speed:
 		# Hold brake: cancel residual speed so the car parks on slopes.
 		# Also cancels the slope pull; cancelling speed alone leaves a steady creep of g·sin(slope)·dt.
 		_parked = true
-		accel = clampf(-forward_speed / dt - _gravity.dot(fwd_g), -tuning.hold_brake_max_accel, tuning.hold_brake_max_accel)
+		var hold_max := tuning.hold_brake_max_accel * traction
+		accel = clampf(-forward_speed / dt - _gravity.dot(fwd_g), -hold_max, hold_max)
 	else:
 		accel = -signf(forward_speed) * tuning.rolling_decel
 	if _drive.handbrake:
-		accel -= signf(forward_speed) * minf(tuning.handbrake_decel, absf(forward_speed) / dt)
-	if is_boosting:
-		accel += tuning.boost_accel * clampf(1.0 - forward_speed / max_speed, 0.0, 1.0)
+		accel -= signf(forward_speed) * minf(tuning.handbrake_decel * traction, absf(forward_speed) / dt)
+	if is_boosting and not stalled:
+		accel += tuning.boost_accel * slow * clampf(1.0 - forward_speed / max_speed, 0.0, 1.0)
+	if stalled:
+		# Linear run-down: at least the Shocker's deceleration (braking may add more), never past zero.
+		var opposing := maxf(-accel * signf(forward_speed), _shock_decel)
+		accel = -signf(forward_speed) * minf(opposing, absf(forward_speed) / dt)
+	var glued := coated_share(wheel_glue)
+	if glued > 0.0 and absf(forward_speed) > max_speed:
+		accel -= signf(forward_speed) * minf(tuning.glue_drag * glued, (absf(forward_speed) - max_speed) / dt)
 	state.apply_central_force(fwd_g * accel * mass)
+
+## Share of wheels (0..1) still coated with oil or glue.
+func coated_share(timers: Array[float]) -> float:
+	var n := 0
+	for t in timers:
+		if t > 0.0:
+			n += 1
+	return float(n) / WHEELS
+
+## Top speed / acceleration factor from glued wheels.
+func _speed_mult() -> float:
+	return lerpf(1.0, tuning.glue_speed_mult, coated_share(wheel_glue))
 
 func _apply_grip(state: PhysicsDirectBodyState3D, xf: Transform3D, right: Vector3, up: Vector3, dt: float) -> void:
 	var wheel_mass := mass / WHEELS
@@ -344,6 +387,7 @@ func _apply_grip(state: PhysicsDirectBodyState3D, xf: Transform3D, right: Vector
 	# Grip ignores the sideways wheel speed caused by the car's own yaw; otherwise grip brakes every turn
 	# and the car only reaches a fraction of max_yaw_rate. Roll and pitch still count (anti-roll).
 	var yaw_spin := up * state.angular_velocity.dot(up)
+	var drifting := _drive.handbrake   # handbrake slides only: slip-based looseness would feed itself
 	for i in WHEELS:
 		if not wheel_grounded[i]:
 			continue
@@ -351,9 +395,15 @@ func _apply_grip(state: PhysicsDirectBodyState3D, xf: Transform3D, right: Vector
 		var grip := tuning.front_grip if front else tuning.rear_grip
 		if _drive.handbrake:
 			grip = tuning.drift_front_grip if front else tuning.drift_rear_grip
+		var wheel_max := max_force * (tuning.drift_lateral_accel_mult if drifting else 1.0)
+		var wheel_hold := hold
+		if wheel_oil[i] > 0.0:
+			grip *= tuning.oil_grip_mult
+			wheel_max *= tuning.oil_lateral_accel_mult
+			wheel_hold = 0.0
 		var offset: Vector3 = xf.basis * tuning.wheel_mounts[i]
 		var lat_vel := (state.get_velocity_at_local_position(offset) - yaw_spin.cross(offset)).dot(right)
-		var force := clampf(-lat_vel * grip * wheel_mass / dt + hold, -max_force, max_force)
+		var force := clampf(-lat_vel * grip * wheel_mass / dt + wheel_hold, -wheel_max, wheel_max)
 		# Apply at a fixed low height to avoid grip-induced rollovers.
 		var apply_at := offset - up * offset.dot(up) + up * tuning.grip_force_height
 		state.apply_force(right * force, apply_at)
@@ -369,8 +419,13 @@ func _apply_yaw(state: PhysicsDirectBodyState3D, up: Vector3) -> void:
 	var target := _drive.steer * tuning.max_yaw_rate * factor * (-1.0 if reversing else 1.0)
 	if _drive.handbrake:
 		target *= tuning.drift_yaw_mult
+	var oiled := coated_share(wheel_oil)
+	target *= lerpf(1.0, tuning.oil_yaw_mult, oiled)
+	var response := tuning.yaw_response * lerpf(1.0, tuning.oil_yaw_response_mult, oiled)
+	if _drive.handbrake:
+		response *= tuning.drift_yaw_response_mult
 	var yaw_rate := state.angular_velocity.dot(up)
-	state.apply_torque(up * (target - yaw_rate) * tuning.yaw_response * tuning.inertia.y)
+	state.apply_torque(up * (target - yaw_rate) * response * tuning.inertia.y)
 
 func _apply_air_control(state: PhysicsDirectBodyState3D, xf: Transform3D) -> void:
 	var inertia_avg := (tuning.inertia.x + tuning.inertia.y + tuning.inertia.z) / 3.0
@@ -446,6 +501,7 @@ func _physics_process(delta: float) -> void:
 	last_aim_point = _input.aim_point
 	for id: int in _bump_cooldowns.keys():
 		_bump_cooldowns[id] = maxf(0.0, _bump_cooldowns[id] - delta)
+	shock_left = maxf(0.0, shock_left - delta)
 	_update_battery(delta)
 	_flush_events()
 	if _input.fire and held_item != null:
@@ -465,10 +521,14 @@ func _update_battery(delta: float) -> void:
 		gain += tuning.air_charge_rate
 	if pad_overlaps > 0 and linear_velocity.length() < tuning.pad_max_speed:
 		gain += tuning.pad_charge_rate
-	is_boosting = _input.boost and battery > 0.0
+	if not _input.boost:
+		_boost_locked = false
+	is_boosting = _input.boost and battery > 0.0 and not _boost_locked
 	if is_boosting:
-		gain -= tuning.boost_drain_rate
+		gain = -tuning.boost_drain_rate   # nothing charges while boosting
 	set_battery(battery + gain * delta)
+	if is_boosting and battery <= 0.0:
+		_boost_locked = true   # else a trickle charge (drift, air, pad) would restart it every other tick
 
 func _flush_events() -> void:
 	if _pending_landing_reward:
@@ -527,7 +587,7 @@ func teleport_to(xf: Transform3D) -> void:
 ## Explosion knockback: velocity change (m/s), a yaw spin (rad/s) and an optional tumble (world angular velocity
 ## change, rad/s) that tips the car.
 func apply_knockback(velocity_change: Vector3, spin: float, tumble: Vector3 = Vector3.ZERO) -> void:
-	apply_central_impulse(velocity_change * mass)
+	apply_central_impulse(velocity_change * mass * knockback_multiplier)
 	apply_torque_impulse(Vector3.UP * spin * tuning.inertia.y + angular_impulse_for(tumble, global_basis))
 
 ## Torque impulse that changes the angular velocity by `delta_omega` (world space). The inertia is set per
@@ -536,22 +596,30 @@ func angular_impulse_for(delta_omega: Vector3, body_basis: Basis) -> Vector3:
 	var b := body_basis.orthonormalized()
 	return b * ((b.transposed() * delta_omega) * tuning.inertia)
 
-## World position of the turret muzzle, pointed at last_aim_point. Computed from the car transform rather than
-## the animated turret, so gameplay never depends on cosmetic smoothing (identical once the turret has turned).
-func get_muzzle_position() -> Vector3:
-	if visual == null or not visual.has_turret():
-		return global_position + Vector3.UP * MUZZLE_FALLBACK_HEIGHT
-	var mount := visual.turret_mount
-	var d := to_local(last_aim_point) - mount
-	d.y = 0.0
-	var dir := d.normalized() if d.length_squared() > 0.0001 else Vector3.FORWARD
-	return to_global(mount + Vector3.UP * visual.barrel_height + dir * visual.barrel_length)
+## World position of the item model's muzzle (item: the one being fired, default the held one); aimed items point
+## at last_aim_point. Computed from the car transform and ItemModels data rather than the animated model, so
+## gameplay never depends on cosmetic smoothing (identical once the model has turned).
+func get_muzzle_position(item: ItemDef = null) -> Vector3:
+	var it := item if item != null else held_item
+	if visual == null or it == null:
+		return to_global(Vector3.UP * MUZZLE_FALLBACK_HEIGHT)
+	var yaw := 0.0   # Shocker / Blast models face forward
+	var d := to_local(last_aim_point) - visual.item_mount
+	if it.aim_type != ItemDef.AimType.NONE and Vector2(d.x, d.z).length_squared() > 0.0001:
+		yaw = atan2(-d.x, -d.z)
+	return to_global(visual.item_mount + Basis(Vector3.UP, yaw) * ItemModels.muzzle_offset(it))
 
 func set_battery(v: float) -> void:
 	var nv := clampf(v, 0.0, 1.0)
 	if not is_equal_approx(nv, battery):
 		battery = nv
 		battery_changed.emit(battery)
+
+## Shocker hit: no drive for duration seconds, and the speed at the hit runs down linearly to zero over that
+## time (a new shock restarts it from the current speed).
+func apply_shock(duration: float) -> void:
+	shock_left = maxf(shock_left, duration)
+	_shock_decel = absf(forward_speed) / maxf(duration, 0.01)
 
 func set_held_item(item: ItemDef) -> void:
 	held_item = item

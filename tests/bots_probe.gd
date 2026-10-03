@@ -194,7 +194,14 @@ func _scoreboard_and_odds() -> void:
 	_m.scores[other.player_id] = 5
 	_m.scores_changed.emit()
 	await _ticks(10)
-	_check("last: overlay shows rocket_trio 40%", overlay.text.contains("rocket_trio 40%"), overlay.text.contains("rocket_trio 40%"))
+	var total_last := 0.0
+	for d in _m.item_defs:
+		total_last += d.weight_last
+	var trio_last := ""
+	for d in _m.item_defs:
+		if d.id == &"rocket_trio":
+			trio_last = "rocket_trio %.0f%%" % (100.0 * d.weight_last / total_last)
+	_check("last: overlay shows %s" % trio_last, overlay.text.contains(trio_last), overlay.text.contains(trio_last))
 	var table := _m.get_node("UI/Hud/Scoreboard/Table") as GridContainer
 	var first_name := (table.get_child(1) as Label).text
 	_check("scoreboard lists every car, leader first", first_name, table.get_child_count() == _m.cars.size() * 3 and first_name == other.display_name)

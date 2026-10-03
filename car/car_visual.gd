@@ -1,6 +1,6 @@
 class_name CarVisual
 extends Node3D
-## Cosmetic side of a car: Kenney model, animated wheels, ring, name label, blob shadow.
+## Cosmetic side of a car: Kenney model, animated wheels, held item model, name label, blob shadow.
 ## Reads car state only; never changes gameplay.
 
 const MODEL_DIR := "res://assets/kenney_car_kit/"
@@ -11,22 +11,17 @@ const BOT_MODELS: Array[String] = ["race-future", "sedan-sports", "hatchback-spo
 
 const STEER_VISUAL_ANGLE := 0.5 # front-wheel turn (rad) at full steer
 const STEER_SHARPNESS := 12.0
-const RING_INNER := 1.25
-const RING_OUTER := 1.45
-const RING_FLATTEN := 0.05
-const RING_LIFT := 0.03 # above the ground at rest
-const LOCAL_RING_LIGHTEN := 0.3
-const LOCAL_PULSE_SPEED := 3.0
-const LOCAL_PULSE_DEPTH := 0.2
+const SUSPENSION_VISUAL_SCALE := 0.5 # wheels show this share of the physics spring travel …
+const SUSPENSION_VISUAL_UP := 0.06 # … at most this far up into the body …
+const SUSPENSION_VISUAL_DOWN := 0.1 # … and this far down
+const SUSPENSION_VISUAL_SHARPNESS := 25.0 # smoothing
 const LABEL_HEIGHT := -1.8
 const LABEL_FONT_SIZE := 32
 const LABEL_OUTLINE_SIZE := 10
 const LABEL_PIXEL_SIZE := 0.0004 # fixed_size labels: world units per pixel at 1 m from the camera
-const TURRET_BASE_RADIUS := 0.22
-const TURRET_BASE_HEIGHT := 0.15
-const BARREL_SIZE := Vector3(0.12, 0.12, 0.6)
-const TURRET_SHARPNESS := 12.0
-const DEFAULT_ROOF_Y := 0.25 # turret height when no model is loaded (chassis box top)
+const ITEM_AIM_SHARPNESS := 12.0 # held item model turning toward the reticle
+const ITEM_POP_TIME := 0.25 # held item model pops in
+const DEFAULT_ROOF_Y := 0.25 # item mount height when no model is loaded (chassis box top)
 const SMOKE_COLOR := Color(0.9, 0.9, 0.9, 0.55)
 const SMOKE_SIZE := 0.7
 const SMOKE_LIFT := 0.1 # above the ground under the rear wheels
@@ -44,6 +39,24 @@ const EXHAUST_CORE_COLOR := Color(0.7, 0.9, 1.0)
 const EXHAUST_FADE_SPEED := 10.0 # cone grows / shrinks this fast (per second) when boost starts / stops
 const EXHAUST_FLICKER_SPEED := 37.0
 const EXHAUST_FLICKER := 0.15
+const SPLATTER_DROP_RADIUS := 0.06
+const SPLATTER_DROP_STRETCH := 2.2 # drops are stretched along their flight
+const SPLATTER_AMOUNT := 64
+const SPLATTER_LIFETIME := 0.8
+const SPLATTER_DRIP_RATIO := 0.12 # share of drops a coated wheel still sheds at standstill …
+const SPLATTER_DRIP_SPEED := 0.4 # … and how fast they leave the tire (m/s)
+const SPLATTER_FLING_SPEED := 8.0 # fastest drop speed at top speed (each drop gets 30–100 %)
+const SPLATTER_RISE := 0.7 # upward part of the fling direction (backward part is 1)
+const SPLATTER_SPREAD := 45.0 # degrees
+const SPLATTER_GRAVITY := 18.0
+const SPLASH_DROPLETS := 4 # a drop hitting the ground bursts into this many droplets …
+const SPLASH_DROPLET_RADIUS := 0.03 # … this small, which settle on the surface
+const SPLASH_AMOUNT := 384
+const SPLASH_LIFETIME := 1.4
+const SPLASH_SPEED_MIN := 0.6
+const SPLASH_SPEED_MAX := 2.2
+const SPLASH_SPREAD := 75.0
+const SPLASH_BOUNCE := 0.15
 const SHADOW_SIZE := Vector3(1.6, 12.0, 2.4)
 const ENGINE_PITCH_IDLE := 0.8 # engine pitch at standstill …
 const ENGINE_PITCH_TOP := 1.6 # … and at boost top speed
@@ -63,14 +76,20 @@ const SHADOW_TEXTURE_SIZE := 64
 @export var visual_length: float = 2.0
 
 var car: Car = null
-## Car-local turret pivot (top center of the model); Car.get_muzzle_position builds on these.
-var turret_mount: Vector3 = Vector3(0.0, DEFAULT_ROOF_Y, 0.0)
-var barrel_height: float = TURRET_BASE_HEIGHT * 0.5
-var barrel_length: float = BARREL_SIZE.z
-var muzzle: Marker3D = null
+## Car-local mount point of the held item's model (top center of the car); Car.get_muzzle_position builds on it.
+var item_mount: Vector3 = Vector3(0.0, DEFAULT_ROOF_Y, 0.0)
+## The held item model's muzzle (null without an item or without a Muzzle marker); cosmetic aim lines start here.
+var muzzle: Node3D = null
 
-var _turret: Node3D = null
+var _item_pivot: Node3D = null # turns toward the aim for aimed items
+var _item_model: Node3D = null
+var _item: ItemDef = null
 var _model: Node3D = null
+var _model_base: Transform3D = Transform3D.IDENTITY
+## Cosmetic roll of the chassis (model body + held item) around the car's length axis; wheels stay put.
+var body_roll: float = 0.0
+## Silences engine, boost and drift sounds (podium ceremony).
+var mute_engine: bool = false
 var _wheels: Array[Node3D] = []
 var _wheel_basis: Array[Basis] = []
 var _wheel_angle: Array[float] = []
@@ -79,7 +98,7 @@ var _pivot_base: Array[Vector3] = []
 var _wheel_spin_sign: float = 1.0
 var _visual_wheel_radius: float = 0.3
 var _rest_spring: float = 0.0 # rest length minus sag
-var _ring_mat: StandardMaterial3D = null
+var _wheel_offset: Array[float] = [0.0, 0.0, 0.0, 0.0] # shown suspension travel per wheel (+ = up)
 var _base_color: Color = Color.WHITE
 var _is_local: bool = false
 var _shadow: Decal = null
@@ -89,6 +108,15 @@ var _flame: GPUParticles3D = null
 var _exhaust: Node3D = null
 var _exhaust_mats: Array[ShaderMaterial] = []
 var _exhaust_amount: float = 0.0
+var _shock_sparks: CPUParticles3D = null
+var _splatter: Array[GPUParticles3D] = [] # per wheel: oil / glue drops flung off a coated tire
+var _splash: Array[GPUParticles3D] = [] # per wheel: droplets where those drops land
+var _splash_linger: Array[float] = []
+var _trails: Array[TireTrail] = [] # per wheel: track on the ground
+var _oil_ramp: GradientTexture1D = null
+var _glue_ramp: GradientTexture1D = null
+var _max_speed: float = 1.0
+var _coating_time: float = 1.0
 var _engine: AudioStreamPlayer3D = null
 var _engine_air: AudioStreamPlayer3D = null
 var _boost_sound: AudioStreamPlayer3D = null
@@ -124,13 +152,14 @@ func setup(model_scene: PackedScene, tuning: CarTuning, color: Color, is_local: 
 	_rest_spring = tuning.suspension_rest_length - sag
 	var ground_y := tuning.wheel_mounts[0].y - _rest_spring - tuning.wheel_radius
 	if model_scene != null:
-		turret_mount.y = _setup_model(model_scene, ground_y)
-	_build_turret()
-	_build_ring(ground_y)
+		item_mount.y = _setup_model(model_scene, ground_y)
+	_build_item_mount()
 	_build_label()
 	_build_shadow()
 	_build_particles(tuning, ground_y)
+	_build_splatter(tuning, ground_y)
 	_build_sounds()
+	_build_shock_sparks()
 
 func _process(delta: float) -> void:
 	if car == null:
@@ -139,34 +168,38 @@ func _process(delta: float) -> void:
 	var steer_blend := 1.0 - exp(-STEER_SHARPNESS * delta)
 	for i in _pivots.size():
 		var pivot := _pivots[i]
-		pivot.position.y = _pivot_base[i].y + (_rest_spring - car.wheel_spring_len[i])
+		var travel := clampf((_rest_spring - car.wheel_spring_len[i]) * SUSPENSION_VISUAL_SCALE,
+			-SUSPENSION_VISUAL_DOWN, SUSPENSION_VISUAL_UP)
+		_wheel_offset[i] = lerpf(_wheel_offset[i], travel, 1.0 - exp(-SUSPENSION_VISUAL_SHARPNESS * delta))
+		pivot.position.y = _pivot_base[i].y + _wheel_offset[i]
 		_wheel_angle[i] = fposmod(_wheel_angle[i] - car.forward_speed / _visual_wheel_radius * delta * _wheel_spin_sign, TAU)
 		_wheels[i].basis = _wheel_basis[i] * Basis(Vector3.RIGHT, _wheel_angle[i])
 		if i < 2:
 			pivot.rotation.y = lerp_angle(pivot.rotation.y, car.last_steer * STEER_VISUAL_ANGLE, steer_blend)
-	if _turret != null:
-		var d := to_local(car.last_aim_point) - turret_mount
-		if Vector2(d.x, d.z).length_squared() > 0.0001:
-			var target := atan2(-d.x, -d.z)
-			_turret.rotation.y = lerp_angle(_turret.rotation.y, target, 1.0 - exp(-TURRET_SHARPNESS * delta))
+	if _item_pivot != null:
+		var target := 0.0   # Shocker / Blast sit facing forward
+		var d := to_local(car.last_aim_point) - item_mount
+		if _item != null and _item.aim_type != ItemDef.AimType.NONE and Vector2(d.x, d.z).length_squared() > 0.0001:
+			target = atan2(-d.x, -d.z)
+		_item_pivot.rotation.y = wrapf(lerp_angle(_item_pivot.rotation.y, target, 1.0 - exp(-ITEM_AIM_SHARPNESS * delta)), -PI, PI)
 	for s in _smoke:
 		if s.emitting != car.is_drifting:
 			s.emitting = car.is_drifting
 	if _flame != null and _flame.emitting != car.is_boosting:
 		_flame.emitting = car.is_boosting
 	_update_exhaust(delta)
+	_update_splatter(delta)
+	if _shock_sparks != null and _shock_sparks.emitting != (car.shock_left > 0.0):
+		_shock_sparks.emitting = car.shock_left > 0.0
 	if _label != null:
 		_label.visible = Settings.show_name_labels
 	_update_sounds(delta)
-	if _is_local and _ring_mat != null:
-		var c := _base_color.lightened(LOCAL_RING_LIGHTEN)
-		var pulse := 1.0 - LOCAL_PULSE_DEPTH * (0.5 + 0.5 * sin(_time * LOCAL_PULSE_SPEED))
-		_ring_mat.albedo_color = Color(c.r * pulse, c.g * pulse, c.b * pulse)
+	_apply_body_roll()
 	_update_shadow()
 
 # --- Model and wheels --------------------------------------------------------------------------
 
-## Instances, scales and places the model; returns the car-local y of its top (turret height).
+## Instances, scales and places the model; returns the car-local y of its top (item mount height).
 func _setup_model(model_scene: PackedScene, ground_y: float) -> float:
 	_model = model_scene.instantiate() as Node3D
 	_model.name = "Model"
@@ -190,6 +223,7 @@ func _setup_model(model_scene: PackedScene, ground_y: float) -> float:
 	var s := visual_length / rotated.size.z
 	var center := rotated.get_center() * s
 	_model.transform = Transform3D(rot.scaled(Vector3.ONE * s), Vector3(-center.x, ground_y - rotated.position.y * s, -center.z))
+	_model_base = _model.transform
 	_setup_wheels()
 	return ground_y + rotated.size.y * s
 
@@ -254,57 +288,35 @@ func _in_model(node: Node3D) -> Transform3D:
 		cur = cur.get_parent() as Node3D
 	return xf
 
-# --- Turret, ring, label, shadow ---------------------------------------------------------------
+# --- Held item model on the roof (ItemModels), label, shadow -------------------------------------
 
-## Roof turret in the player color; yaws toward car.last_aim_point. The Muzzle marker sits at the barrel tip.
-func has_turret() -> bool:
-	return _turret != null
+## The held item's model sits on the roof; aimed items yaw toward car.last_aim_point.
 
-func _build_turret() -> void:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = _base_color
-	mat.roughness = 0.5
-	_turret = Node3D.new()
-	_turret.name = "Turret"
-	_turret.position = turret_mount
-	add_child(_turret)
-	var base_mesh := CylinderMesh.new()
-	base_mesh.top_radius = TURRET_BASE_RADIUS
-	base_mesh.bottom_radius = TURRET_BASE_RADIUS
-	base_mesh.height = TURRET_BASE_HEIGHT
-	_add_part(_turret, base_mesh, mat, Vector3(0.0, TURRET_BASE_HEIGHT * 0.5, 0.0))
-	var barrel_mesh := BoxMesh.new()
-	barrel_mesh.size = BARREL_SIZE
-	_add_part(_turret, barrel_mesh, mat, Vector3(0.0, barrel_height, -BARREL_SIZE.z * 0.5))
-	muzzle = Marker3D.new()
-	muzzle.name = "Muzzle"
-	muzzle.position = Vector3(0.0, barrel_height, -barrel_length)
-	_turret.add_child(muzzle)
+func _build_item_mount() -> void:
+	_item_pivot = Node3D.new()
+	_item_pivot.name = "ItemMount"
+	_item_pivot.position = item_mount
+	add_child(_item_pivot)
+	car.item_changed.connect(_on_item_changed)
+	_on_item_changed(car.held_item)
 
-func _add_part(parent: Node3D, mesh: Mesh, mat: Material, pos: Vector3) -> void:
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	mi.layers = Layers.RENDER_CARS
-	parent.add_child(mi)
-
-func _build_ring(ground_y: float) -> void:
-	var torus := TorusMesh.new()
-	torus.inner_radius = RING_INNER
-	torus.outer_radius = RING_OUTER
-	_ring_mat = StandardMaterial3D.new()
-	_ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_ring_mat.albedo_color = _base_color
-	var ring := MeshInstance3D.new()
-	ring.name = "Ring"
-	ring.mesh = torus
-	ring.material_override = _ring_mat
-	ring.scale = Vector3(1.0, RING_FLATTEN, 1.0)
-	ring.position.y = ground_y + RING_LIFT
-	ring.layers = Layers.RENDER_CARS
-	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(ring)
+func _on_item_changed(item: ItemDef) -> void:
+	if item == _item:
+		return
+	_item = item
+	if _item_model != null:
+		_item_model.queue_free()
+		_item_model = null
+	muzzle = null
+	if item == null:
+		return
+	_item_model = ItemModels.build(item)
+	_item_model.name = "ItemModel"
+	_item_pivot.add_child(_item_model)
+	muzzle = _item_model.find_child("Muzzle", true, false) as Node3D
+	_item_model.scale = Vector3.ONE * 0.01
+	_item_model.create_tween().tween_property(_item_model, "scale", Vector3.ONE, ITEM_POP_TIME) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _build_label() -> void:
 	var label := Label3D.new()
@@ -501,7 +513,7 @@ func _sound_player(node_name: String, stream: AudioStream, bus: StringName) -> A
 func _update_sounds(delta: float) -> void:
 	if _engine == null:
 		return
-	if car.eliminated:
+	if car.eliminated or mute_engine:
 		for p: AudioStreamPlayer3D in [_engine, _engine_air, _boost_sound, _drift_sound]:
 			if p.playing:
 				p.stop()
@@ -530,6 +542,192 @@ func _update_sounds(delta: float) -> void:
 			_drift_sound.play()
 	elif not car.is_drifting and _drift_sound.playing:
 		_drift_sound.stop()
+
+# --- Oil / glue: drops flung off coated wheels, droplets where they land, tracks on the ground -------
+
+func _build_splatter(tuning: CarTuning, ground_y: float) -> void:
+	_max_speed = tuning.max_speed
+	_coating_time = tuning.wheel_coating_time
+	_oil_ramp = _color_variations(ItemRegistry.OIL_COLOR, 0.6, 0.1)
+	_glue_ramp = _color_variations(ItemRegistry.GLUE_COLOR, 0.3, 0.3)
+	var drop := _drop_mesh(SPLATTER_DROP_RADIUS, SPLATTER_DROP_RADIUS * 2.0 * SPLATTER_DROP_STRETCH)
+	var droplet := _drop_mesh(SPLASH_DROPLET_RADIUS, SPLASH_DROPLET_RADIUS)   # flattened: lies on the surface
+	var drop_shrink := _curve_texture([Vector2(0.0, 1.0), Vector2(1.0, 0.3)])
+	var droplet_shrink := _curve_texture([Vector2(0.0, 1.0), Vector2(0.6, 1.0), Vector2(1.0, 0.0)])
+	for i in Car.WHEELS:
+		# Droplets: spawned by the drops below when they hit the arena (particle heightfield, slopes included).
+		var spm := ParticleProcessMaterial.new()
+		spm.direction = Vector3.UP
+		spm.spread = SPLASH_SPREAD
+		spm.initial_velocity_min = SPLASH_SPEED_MIN
+		spm.initial_velocity_max = SPLASH_SPEED_MAX
+		spm.gravity = Vector3(0.0, -SPLATTER_GRAVITY, 0.0)
+		spm.scale_min = 0.5
+		spm.scale_max = 1.5
+		spm.scale_curve = droplet_shrink
+		spm.color_initial_ramp = _oil_ramp
+		spm.collision_mode = ParticleProcessMaterial.COLLISION_RIGID
+		spm.collision_bounce = SPLASH_BOUNCE
+		spm.collision_friction = 1.0
+		spm.collision_use_scale = true
+		var splash := GPUParticles3D.new()
+		splash.name = "WheelSplash%d" % i
+		splash.top_level = true # world-space directions (UP is up)
+		splash.process_material = spm
+		splash.draw_pass_1 = droplet
+		splash.amount = SPLASH_AMOUNT
+		splash.lifetime = SPLASH_LIFETIME
+		splash.local_coords = false
+		splash.emitting = false
+		splash.collision_base_size = SPLASH_DROPLET_RADIUS
+		splash.layers = Layers.RENDER_CARS
+		splash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		splash.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+		add_child(splash)
+		_splash.append(splash)
+		_splash_linger.append(0.0)
+
+		# Drops: stretched along their flight, random size / color / direction; burst into droplets on contact.
+		var m: Vector3 = tuning.wheel_mounts[i]
+		var pm := ParticleProcessMaterial.new()
+		pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+		pm.emission_box_extents = Vector3(0.1, tuning.wheel_radius * 0.6, tuning.wheel_radius * 0.6)
+		pm.spread = SPLATTER_SPREAD
+		pm.gravity = Vector3(0.0, -SPLATTER_GRAVITY, 0.0)
+		pm.scale_min = 0.4
+		pm.scale_max = 1.3
+		pm.scale_curve = drop_shrink
+		pm.color_initial_ramp = _oil_ramp
+		pm.set_particle_flag(ParticleProcessMaterial.PARTICLE_FLAG_ALIGN_Y_TO_VELOCITY, true)
+		pm.collision_mode = ParticleProcessMaterial.COLLISION_HIDE_ON_CONTACT
+		pm.collision_use_scale = true
+		pm.sub_emitter_mode = ParticleProcessMaterial.SUB_EMITTER_AT_COLLISION
+		pm.sub_emitter_amount_at_collision = SPLASH_DROPLETS
+		var p := GPUParticles3D.new()
+		p.name = "WheelSplatter%d" % i
+		p.process_material = pm
+		p.draw_pass_1 = drop
+		p.amount = SPLATTER_AMOUNT
+		p.lifetime = SPLATTER_LIFETIME
+		p.randomness = 1.0
+		p.local_coords = false
+		p.emitting = false
+		p.collision_base_size = SPLATTER_DROP_RADIUS
+		p.sub_emitter = NodePath("../" + splash.name)
+		p.position = Vector3(m.x, ground_y + tuning.wheel_radius, m.z)
+		p.layers = Layers.RENDER_CARS
+		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(p)
+		_splatter.append(p)
+
+		var trail := TireTrail.new()
+		trail.name = "TireTrail%d" % i
+		add_child(trail)
+		_trails.append(trail)
+
+## Coated wheels shed drops: a few drips when slow, a spray thrown back and up when fast.
+func _update_splatter(delta: float) -> void:
+	var t := clampf(absf(car.forward_speed) / _max_speed, 0.0, 1.0)
+	for i in _splatter.size():
+		var p := _splatter[i]
+		var splash := _splash[i]
+		var kind := _coat_kind(i)
+		var coated := kind >= 0
+		if p.emitting != coated:
+			p.emitting = coated
+		# Droplets keep coming while drops of a just-cleaned tire are still in the air.
+		_splash_linger[i] = SPLATTER_LIFETIME if coated else maxf(0.0, _splash_linger[i] - delta)
+		if splash.emitting != (_splash_linger[i] > 0.0):
+			splash.emitting = _splash_linger[i] > 0.0
+		if not coated:
+			continue
+		var pm := p.process_material as ParticleProcessMaterial
+		var ramp := _oil_ramp if kind == ItemDef.Kind.OIL else _glue_ramp
+		if pm.color_initial_ramp != ramp:
+			pm.color_initial_ramp = ramp
+			(splash.process_material as ParticleProcessMaterial).color_initial_ramp = ramp
+		pm.direction = Vector3(0.0, SPLATTER_RISE, 1.0 if car.forward_speed >= 0.0 else -1.0).normalized()
+		var v := lerpf(SPLATTER_DRIP_SPEED, SPLATTER_FLING_SPEED, t)
+		pm.initial_velocity_min = v * 0.3
+		pm.initial_velocity_max = v
+		p.amount_ratio = lerpf(SPLATTER_DRIP_RATIO, 1.0, t)
+
+## Tracks follow the wheels' ground contacts every physics tick.
+func _physics_process(_delta: float) -> void:
+	if car == null or _trails.is_empty():
+		return
+	var heading := -car.global_basis.z
+	for i in _trails.size():
+		var kind := _coat_kind(i)
+		var strength := 0.0
+		if kind >= 0 and car.wheel_grounded[i]:
+			strength = maxf(car.wheel_oil[i], car.wheel_glue[i]) / _coating_time
+		_trails[i].track(kind, car.wheel_contact[i], car.wheel_normal[i], heading, strength)
+
+## What a wheel is coated with (ItemDef.Kind.OIL / GLUE, the fresher coat wins), or -1 when clean.
+func _coat_kind(i: int) -> int:
+	var oil := car.wheel_oil[i]
+	var glue := car.wheel_glue[i]
+	if oil <= 0.0 and glue <= 0.0:
+		return -1
+	return ItemDef.Kind.OIL if oil >= glue else ItemDef.Kind.GLUE
+
+## Random per-particle shades of a color (darker … lighter).
+func _color_variations(c: Color, darker: float, lighter: float) -> GradientTexture1D:
+	var g := Gradient.new()
+	g.set_color(0, c.darkened(darker))
+	g.set_color(1, c.lightened(lighter))
+	g.add_point(0.5, c)
+	var tex := GradientTexture1D.new()
+	tex.gradient = g
+	return tex
+
+func _drop_mesh(radius: float, height: float) -> SphereMesh:
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 0.3 # wet sheen, without mirroring the bright sky
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = height
+	mesh.radial_segments = 8
+	mesh.rings = 4
+	mesh.material = mat
+	return mesh
+
+func _curve_texture(points: Array[Vector2]) -> CurveTexture:
+	var curve := Curve.new()
+	for pt in points:
+		curve.add_point(pt)
+	var tex := CurveTexture.new()
+	tex.curve = curve
+	return tex
+
+## Blue electric sparks crackling around a car slowed by the Shocker.
+func _build_shock_sparks() -> void:
+	_shock_sparks = CPUParticles3D.new()
+	_shock_sparks.name = "ShockSparks"
+	_shock_sparks.amount = 24
+	_shock_sparks.lifetime = 0.3
+	_shock_sparks.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	_shock_sparks.emission_box_extents = Vector3(0.6, 0.3, 1.0)
+	_shock_sparks.direction = Vector3.UP
+	_shock_sparks.spread = 180.0
+	_shock_sparks.initial_velocity_min = 1.0
+	_shock_sparks.initial_velocity_max = 3.0
+	_shock_sparks.gravity = Vector3.ZERO
+	_shock_sparks.color = Color(0.5, 0.9, 1.0)
+	_shock_sparks.mesh = Effects.particle_mesh(0.07)
+	_shock_sparks.emitting = false
+	_shock_sparks.position.y = 0.2
+	add_child(_shock_sparks)
+
+## Rolls the chassis (model and held item) around the car's length axis, leaving the wheel pivots alone.
+func _apply_body_roll() -> void:
+	var roll := Transform3D(Basis(Vector3.BACK, body_roll), Vector3.ZERO)
+	if _model != null:
+		_model.transform = roll * _model_base
+	if _item_pivot != null:
+		_item_pivot.position = roll * item_mount
 
 func _update_shadow() -> void:
 	if _shadow == null or car == null:

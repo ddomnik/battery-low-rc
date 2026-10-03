@@ -10,7 +10,7 @@ const ROCKET_LEAD_TIME := 0.3
 const BOOST_MIN_BATTERY := 0.5
 const BOOST_MIN_DISTANCE := 15.0
 const BOOST_MAX_ANGLE_DEG := 20.0
-const BATTERY_PACK_USE_BELOW := 0.6  # use a battery pack once the battery is below this
+const AREA_ITEM_REACH := 0.8         # Shocker / Blast: use when the target is within this share of the reach
 const REACHABLE_HEIGHT := 1.5        # skip item boxes this far above / below the bot (e.g. on the table)
 const ARRIVE_DISTANCE := 3.0         # wander points count as reached within this distance
 const WANDER_EXTENT := 35.0          # random wander points within ±this on X and Z
@@ -95,12 +95,13 @@ func _think() -> void:
 		_wandering = true
 
 ## True on the tick the bot fires: after a reaction delay once the held item has a target in range
-## (battery packs: once the battery is low).
+## (Shocker / Blast: a car close by).
 func _update_fire(delta: float) -> bool:
 	var item := car.held_item
 	var can_fire := false
-	if item != null and item.kind == ItemDef.Kind.BATTERY:
-		can_fire = car.battery < BATTERY_PACK_USE_BELOW
+	if item != null and item.aim_type == ItemDef.AimType.NONE:   # Shocker, Blast: someone close enough
+		var near := _nearest_car()
+		can_fire = near != null and near.global_position.distance_to(car.global_position) <= item.explosion_radius * AREA_ITEM_REACH
 	elif item != null and _target_car != null:
 		var fire_range := ROCKET_RANGE if item.aim_type == ItemDef.AimType.STRAIGHT else item.max_range
 		can_fire = _flat(_target_car.global_position - car.global_position).length() <= fire_range

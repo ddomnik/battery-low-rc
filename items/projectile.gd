@@ -11,6 +11,8 @@ const BALLOON_RADIUS := 0.3
 const WOBBLE_SPEED := 14.0
 const WOBBLE_AMOUNT := 0.08
 const VERTICAL_FACING_LIMIT := 0.98  # skip look_at when the velocity is this close to vertical
+const THROWN_MODEL_CENTER := 0.28    # oil / glue roof models stand on their origin; spin them around their middle
+const THROWN_TUMBLE_SPEED := 9.0     # rad/s
 
 var match_node: Match = null
 var shooter: Car = null
@@ -20,7 +22,8 @@ var _origin: Vector3 = Vector3.ZERO
 var _velocity0: Vector3 = Vector3.ZERO
 var _gravity: Vector3 = Vector3.ZERO
 var _age: float = 0.0
-var _body: MeshInstance3D = null
+var _body: Node3D = null
+var _tumble_axis: Vector3 = Vector3.RIGHT
 
 ## Call before adding to the tree.
 func launch(m: Match, from_car: Car, item_def: ItemDef, origin: Vector3, velocity: Vector3) -> void:
@@ -46,15 +49,22 @@ func _physics_process(delta: float) -> void:
 	var hit: Variant = _sweep(from, to)
 	if hit != null or _age >= item.lifetime:
 		var at: Vector3 = hit if hit != null else to
-		var effect := &"splash" if item.kind == ItemDef.Kind.BALLOON else &"explosion"
-		match_node.explode(at, item.explosion_radius, item.knockback, item.up_knockback, shooter, item.spin, item.tumble, effect)
+		if item.kind == ItemDef.Kind.OIL or item.kind == ItemDef.Kind.GLUE:
+			match_node.spawn_puddle(item, at)
+		else:
+			var effect := &"splash" if item.kind == ItemDef.Kind.BALLOON else &"explosion"
+			match_node.explode(at, item.explosion_radius, item.knockback, item.up_knockback, shooter, item.spin, item.tumble, effect)
 		queue_free()
 		return
 	global_position = to
 	_face(_velocity0 + _gravity * _age)
 
-func _process(_delta: float) -> void:
-	if item.kind == ItemDef.Kind.BALLOON and _body != null:
+func _process(delta: float) -> void:
+	if _body == null:
+		return
+	if item.kind == ItemDef.Kind.OIL or item.kind == ItemDef.Kind.GLUE:
+		_body.rotate(_tumble_axis, THROWN_TUMBLE_SPEED * delta)
+	elif item.aim_type == ItemDef.AimType.LOB:
 		var w := sin(_age * WOBBLE_SPEED) * WOBBLE_AMOUNT
 		_body.scale = Vector3(1.0 + w, 1.0 - w, 1.0 + w)
 
@@ -89,22 +99,31 @@ func _face(velocity: Vector3) -> void:
 	look_at(global_position + velocity, Vector3.UP)
 
 func _build_visual() -> void:
+	if item.kind == ItemDef.Kind.OIL or item.kind == ItemDef.Kind.GLUE:   # the barrel / bottle from the roof
+		_body = Node3D.new()
+		var model := ItemModels.build(item)
+		model.position = Vector3.DOWN * THROWN_MODEL_CENTER
+		_body.add_child(model)
+		_tumble_axis = Vector3(1.0, 0.3, 0.2).normalized()
+		add_child(_body)
+		return
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = item.color
-	_body = MeshInstance3D.new()
-	_body.material_override = mat
-	if item.kind == ItemDef.Kind.BALLOON:
+	var mi := MeshInstance3D.new()
+	mi.material_override = mat
+	_body = mi
+	if item.aim_type == ItemDef.AimType.LOB:   # water balloon
 		var sphere := SphereMesh.new()
 		sphere.radius = BALLOON_RADIUS
 		sphere.height = BALLOON_RADIUS * 2.0
-		_body.mesh = sphere
+		mi.mesh = sphere
 		add_child(_body)
 		return
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = ROCKET_RADIUS
 	cyl.bottom_radius = ROCKET_RADIUS
 	cyl.height = ROCKET_LENGTH
-	_body.mesh = cyl
+	mi.mesh = cyl
 	_body.rotation.x = -PI * 0.5   # cylinder axis (Y) along the flight direction (−Z)
 	add_child(_body)
 	var flame := CPUParticles3D.new()

@@ -11,7 +11,8 @@ const KEYS := {
 	"debug_toggle_camera": [KEY_F2], "debug_overlay": [KEY_F3], "debug_draw": [KEY_F4],
 	"debug_fill_battery": [KEY_F6], "debug_add_score": [KEY_F7],
 	"debug_give_item_1": [KEY_1], "debug_give_item_2": [KEY_2],
-	"debug_give_item_3": [KEY_3], "debug_give_item_4": [KEY_4],
+	"debug_give_item_3": [KEY_3], "debug_give_item_4": [KEY_4], "debug_give_item_5": [KEY_5],
+	"debug_give_item_6": [KEY_6], "debug_give_item_7": [KEY_7],
 }
 const MOUSE := {"fire": [MOUSE_BUTTON_LEFT]}
 

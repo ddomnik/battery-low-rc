@@ -82,6 +82,10 @@ func _process(_delta: float) -> void:
 		_lines.surface_begin(Mesh.PRIMITIVE_LINES, _line_mat)
 		_line(muzzle, end, Color(color, ROCKET_LINE_ALPHA))
 		_lines.surface_end()
+	elif item != null and aim_type == ItemDef.AimType.NONE:   # Shocker / Blast: show the reach around the car
+		_place_flat(_landing_ring, car.get_global_transform_interpolated().origin + Vector3.DOWN * 0.55, Vector3.UP, item.explosion_radius)
+		_landing_mat.albedo_color = Color(item.color, LANDING_RING_ALPHA)
+		_landing_ring.visible = true
 	elif aim_type == ItemDef.AimType.LOB and _has_lob_target:
 		_draw_lob_arc(muzzle, _lob_target, item, Color(color, ARC_ALPHA))
 		_place_flat(_landing_ring, _lob_target, Vector3.UP, item.explosion_radius)

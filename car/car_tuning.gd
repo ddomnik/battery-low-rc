@@ -48,6 +48,8 @@ extends Resource
 @export var min_steer_factor: float = 0.5
 @export var high_speed_steer_mult: float = 0.75
 @export var drift_yaw_mult: float = 1.4
+@export var drift_lateral_accel_mult: float = 0.5   # grip cap while drifting (× max_lateral_accel): a bit like oil
+@export var drift_yaw_response_mult: float = 0.5    # yaw held more loosely while drifting: rotates on a little
 @export var drift_min_speed: float = 4.0         # a held-handbrake doughnut runs at ~5 m/s
 @export var drift_slip_threshold: float = 1.2    # normal hard cornering slips ~0.5 m/s, handbrake slides > 1.3
 
@@ -87,6 +89,16 @@ extends Resource
 @export var landing_boost_max: float = 9.0       # forward push (m/s) at landing_full_reward_air_time
 @export var perfect_landing_battery_min: float = 0.05
 @export var perfect_landing_battery_max: float = 0.2
+
+@export_group("Hazards")
+@export var wheel_coating_time: float = 5.0      # a wheel that touched oil / glue stays coated this long after leaving it
+@export var oil_grip_mult: float = 0.05          # grip of an oiled wheel (fraction of normal)
+@export var oil_lateral_accel_mult: float = 0.08 # an oiled wheel's grip cap (× max_lateral_accel): slides in turns and on slopes
+@export var oil_brake_mult: float = 0.2          # braking and parking hold with all four wheels oiled (slides down slopes)
+@export var oil_yaw_mult: float = 1.8            # yaw rate at full steer with all four wheels oiled (> 1: spins faster)
+@export var oil_yaw_response_mult: float = 0.3   # how firmly the yaw rate is held on oil (low: keeps spinning after a turn)
+@export var glue_speed_mult: float = 0.3         # top speed and acceleration with all four wheels glued
+@export var glue_drag: float = 12.0              # extra deceleration (m/s²) above the glued top speed (all wheels)
 
 @export_group("Wall crash")
 @export var wall_bounce_min_speed: float = 4.0   # impact speed (into the wall) needed for a kickback

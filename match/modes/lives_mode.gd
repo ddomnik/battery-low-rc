@@ -2,7 +2,8 @@ class_name LivesMode
 extends GameMode
 ## Deathmatch with lives: every car carries its lives as balloons on its back. A scoring hit (strong ram, blast)
 ## or falling off the map pops one; after a pop the car is safe for a moment. No balloons left = out.
-## Last car with balloons wins.
+## Popped balloons fly up for a second and burst into confetti of their color. Taking someone's last balloon
+## (or hitting them just before they fall off) counts as a kill. Last car with balloons wins.
 
 const INVULNERABLE_TIME := 1.5
 const BALLOON_RADIUS := 0.3
@@ -14,8 +15,11 @@ const BOB_SPEED := 2.2
 const BOB_AMOUNT := 0.08
 const LOST_COLOR := Color(1.0, 0.5, 0.4)
 const POP_COLOR := Color(1.0, 0.9, 0.3)
+const FLOAT_HEIGHT := 4.0            # a popped balloon rises this far …
+const FLOAT_TIME := 1.0              # … in this time, then bursts into confetti
 
 var _lives: Dictionary = {}          # player_id → int
+var _kills: Dictionary = {}          # player_id → int
 var _safe_until: Dictionary = {}     # player_id → match time
 var _balloons: Dictionary = {}       # player_id → Array[Node3D] (one per life, last = next to pop)
 var _time: float = 0.0
@@ -35,7 +39,7 @@ func on_scoring_hit(attacker: Car, victim: Car) -> void:
 	_pop(victim, attacker)
 
 func on_fell_off(car: Car) -> bool:
-	_pop(car, null, true)
+	_pop(car, match_node.last_attacker(car), true)
 	return not car.eliminated
 
 func ranking() -> Array[Car]:
@@ -43,14 +47,20 @@ func ranking() -> Array[Car]:
 	alive.sort_custom(func(a: Car, b: Car) -> bool:
 		var la: int = _lives.get(a.player_id, 0)
 		var lb: int = _lives.get(b.player_id, 0)
-		return la > lb if la != lb else _by_score(a, b))
+		if la != lb:
+			return la > lb
+		var ka: int = _kills.get(a.player_id, 0)
+		var kb: int = _kills.get(b.player_id, 0)
+		return ka > kb if ka != kb else _by_score(a, b))
 	var out := match_node.eliminated_order.duplicate()
 	out.reverse()
 	alive.append_array(out)
 	return alive
 
 func score_text(car: Car) -> String:
-	return "OUT" if match_node.eliminated_order.has(car) else "%d" % _lives.get(car.player_id, 0)
+	var kill_count: int = _kills.get(car.player_id, 0)
+	var lives_text := "out" if match_node.eliminated_order.has(car) else "%d lives" % _lives.get(car.player_id, 0)
+	return "%s · %d %s" % [lives_text, kill_count, "kill" if kill_count == 1 else "kills"]
 
 func status_text() -> String:
 	return "%d left" % match_node.alive_cars().size()
@@ -66,16 +76,30 @@ func _pop(car: Car, attacker: Car, force: bool = false) -> void:
 	_safe_until[car.player_id] = match_node.time + INVULNERABLE_TIME
 	var list: Array = _balloons.get(car.player_id, [])
 	if not list.is_empty():
-		var balloon: Node3D = list.pop_back()
-		match_node.play_effect(&"pop", (balloon.get_child(0) as Node3D).global_position, 0.0)
-		balloon.queue_free()
+		_float_away(list.pop_back(), car.color)
 	if car == match_node.local_car:
 		match_node.popup("BALLOON LOST!", LOST_COLOR)
 	elif attacker == match_node.local_car:
 		match_node.popup("POP!", POP_COLOR)
 	if lives <= 0:
+		if attacker != null and attacker != car:
+			_kills[attacker.player_id] = int(_kills.get(attacker.player_id, 0)) + 1
+			if attacker == match_node.local_car:
+				match_node.popup("KILL!", POP_COLOR)
 		match_node.eliminate(car)
 	match_node.scores_changed.emit()
+
+## A popped balloon lets go of the car, rises for FLOAT_TIME, and bursts into confetti of its color.
+func _float_away(balloon: Node3D, color: Color) -> void:
+	balloon.reparent(match_node, true)
+	balloon.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF   # moved per frame by the tween
+	var tw := balloon.create_tween()
+	tw.tween_property(balloon, "global_position", balloon.global_position + Vector3.UP * FLOAT_HEIGHT, FLOAT_TIME) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(balloon, "rotation:z", 0.4, FLOAT_TIME).set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(func() -> void:
+		match_node.play_effect(&"confetti", (balloon.get_child(0) as Node3D).global_position, 0.0, color)
+		balloon.queue_free())
 
 func _process(delta: float) -> void:
 	_time += delta

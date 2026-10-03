@@ -27,6 +27,8 @@ enum Mode {FOLLOW, FIXED}
 @export var shake_noise_speed: float = 60.0
 @export var showcase_distance: float = 24.0    # closer view for the podium ceremony
 @export var showcase_sharpness: float = 2.0   # 1/s; glide to the podium
+@export var showcase_swivel_deg: float = 9.0  # the podium view slowly sways left and right by this much
+@export var showcase_swivel_speed: float = 0.5
 @export var cutout_radius: float = 3.5        # occlusion cutout around the camera→car line (m); 0 = off
 @export var cutout_transparency: float = 0.7  # how see-through the cut area gets (0..1)
 @export var cutout_fade_speed: float = 8.0    # 1/s; fade in / out when the car gets hidden / visible
@@ -97,7 +99,9 @@ func snap_to_target() -> void:
 
 func _process_showcase(delta: float) -> void:
 	var blend := 1.0 - exp(-showcase_sharpness * delta)
-	_yaw = lerp_angle(_yaw, 0.0, blend)
+	_time += delta
+	var swivel := deg_to_rad(showcase_swivel_deg) * sin(_time * showcase_swivel_speed)
+	_yaw = lerp_angle(_yaw, swivel, blend)
 	rotation.y = _yaw
 	_focus = _focus.lerp(_showcase_point, blend)
 	global_position = _focus

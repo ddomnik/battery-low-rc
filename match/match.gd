@@ -32,6 +32,7 @@ const PERFECT_LANDING_COLOR := Color(0.4, 0.95, 1.0)
 const SCORE_POPUP_COLOR := Color(1.0, 0.9, 0.3)
 const KNOCKOUT_COLOR := Color(1.0, 0.45, 0.2)
 const OUT_COLOR := Color(1.0, 0.4, 0.35)
+const SPECTATE_DELAY := 1.5           # s the camera lingers where the local car went out before spectating
 const SHAKE_DIVISOR := 30.0           # camera trauma = bump strength or crash impact speed / this
 const SPAWN_LIFT := 0.8               # car origin above a spawn marker; the car settles onto its springs
 const RESPAWN_IGNORE_TIME := 0.5
@@ -65,6 +66,7 @@ var countdown_left: float = COUNTDOWN_TIME
 var time_left: float = 0.0            # round timer (modes with uses_round_timer)
 var mode: GameMode = null
 var eliminated_order: Array[Car] = []  # first out first
+var _spectate_at: float = -1.0        # match time to switch to spectating (local car just went out)
 
 var _cars_root: Node3D
 var _projectiles_root: Node3D
@@ -180,6 +182,9 @@ func _physics_process(delta: float) -> void:
 				countdown_left = 0.0
 				_enter_state(State.PLAYING)
 		State.PLAYING:
+			if _spectate_at >= 0.0 and time >= _spectate_at:
+				_spectate_at = -1.0
+				_spectate_next()
 			if mode.uses_round_timer():
 				time_left = maxf(time_left - delta, 0.0)
 			if mode.is_round_over():
@@ -301,7 +306,8 @@ func eliminate(car: Car) -> void:
 	play_effect(&"pop", car.global_position, 0.0)
 	if car == local_car:
 		popup("YOU'RE OUT!", OUT_COLOR)
-	if camera_rig.target == car:
+		_spectate_at = time + SPECTATE_DELAY   # see your car go first (balloon, burst), then spectate
+	elif camera_rig.target == car:
 		_spectate_next()
 	scores_changed.emit()
 
@@ -426,21 +432,32 @@ func _on_item_used(car: Car, item: ItemDef, aim_point: Vector3) -> void:
 		return
 	var effect := &"fire"
 	match item.kind:
-		ItemDef.Kind.BATTERY:
-			car.set_battery(car.battery + item.battery_amount)
-			effect = &"battery"
+		ItemDef.Kind.SHOCK:
+			for other in cars:
+				if other != car and not other.eliminated \
+						and other.global_position.distance_to(car.global_position) <= item.explosion_radius:
+					other.apply_shock(item.effect_time)
+					note_hit(car, other)
+					register_hit(car, other)   # a point; in Deathmatch (lives) it also pops a balloon
+					play_effect(&"shock_arc", other.global_position, 0.0, item.color, car, other)
+			play_effect(&"shock", car.global_position, item.explosion_radius, item.color, car)
+			return
+		ItemDef.Kind.BLAST:
+			explode(car.global_position, item.explosion_radius, item.knockback, item.up_knockback, car, 4.0, 2.5,
+				&"explosion", car)
+			return
 		ItemDef.Kind.ROCKET:
 			for n in item.count:
 				var t := 0.0 if item.count == 1 else float(n) / float(item.count - 1) - 0.5
 				spawn_projectile(car, item, aim_point, t * item.spread_deg)
-		ItemDef.Kind.BALLOON:
+		ItemDef.Kind.BALLOON, ItemDef.Kind.OIL, ItemDef.Kind.GLUE:
 			var space := car.get_world_3d().direct_space_state
 			spawn_projectile(car, item, Ballistics.clamp_target(space, car.global_position, aim_point, item.max_range), 0.0)
 			effect = &"throw"
-	play_effect(effect, car.get_muzzle_position(), 0.0)
+	play_effect(effect, car.get_muzzle_position(item), 0.0)
 
 func spawn_projectile(shooter: Car, item: ItemDef, target: Vector3, spread_deg: float) -> void:
-	var origin := shooter.get_muzzle_position()
+	var origin := shooter.get_muzzle_position(item)
 	var velocity: Vector3
 	if item.aim_type == ItemDef.AimType.LOB:
 		var flight := Ballistics.lob_flight_time(Vector2(target.x - origin.x, target.z - origin.z).length(), item.max_range)
@@ -452,14 +469,33 @@ func spawn_projectile(shooter: Car, item: ItemDef, target: Vector3, spread_deg: 
 	p.launch(self, shooter, item, origin, velocity)
 	_projectiles_root.add_child(p)
 
+## Oil / glue puddle on the surface below pos (thrown items).
+func spawn_puddle(item: ItemDef, pos: Vector3) -> void:
+	if not Net.is_authority():
+		return
+	var space := get_world_3d().direct_space_state
+	var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(pos + Vector3.UP * 1.0, pos + Vector3.DOWN * 30.0, Layers.WORLD))
+	if hit.is_empty():
+		return   # landed off the map
+	var puddle := Puddle.new()
+	puddle.kind = item.kind
+	puddle.radius = item.explosion_radius
+	puddle.lifetime = item.effect_time
+	puddle.color = item.color
+	puddle.shape_seed = rng.randi()   # the blob layout decides where tires get coated
+	puddle.position = hit.position
+	_projectiles_root.add_child(puddle)
+	play_effect(&"splat", hit.position, item.explosion_radius, item.color)
+
 ## Knocks back every car in the radius (linear falloff) and scores hits for the attacker.
 ## spin = random yaw twist, tumble = tip-away spin (both rad/s at the center). effect = &"explosion" or &"splash".
+## skip: a car the blast leaves alone (the sticky bomb's holder, which gets its own launch).
 func explode(pos: Vector3, radius: float, strength: float, up_strength: float, attacker: Car,
-		spin: float = 3.0, tumble: float = 1.5, effect: StringName = &"explosion") -> void:
+		spin: float = 3.0, tumble: float = 1.5, effect: StringName = &"explosion", skip: Car = null) -> void:
 	if not Net.is_authority():
 		return
 	for car in cars:
-		if car.eliminated:
+		if car.eliminated or car == skip:
 			continue
 		var offset := car.global_position - pos
 		var dist := offset.length()
@@ -471,9 +507,18 @@ func explode(pos: Vector3, radius: float, strength: float, up_strength: float, a
 		car.apply_knockback((dir * strength + Vector3.UP * up_strength) * falloff, rng.randf_range(-spin, spin) * falloff,
 			Vector3.UP.cross(dir) * tumble * falloff)
 		note_hit(attacker, car)
+		mode.on_damage(car, strength * falloff)
 		if car != attacker and strength * falloff >= car.tuning.bump_score_strength * EXPLOSION_HIT_FACTOR:
 			register_hit(attacker, car)
 	play_effect(effect, pos, radius)
+
+## The car that last bumped or blasted the victim within KNOCKOUT_CREDIT_TIME, or null.
+func last_attacker(victim: Car) -> Car:
+	var hit: Dictionary = _last_hit_by.get(victim.player_id, {})
+	if hit.is_empty() or time - float(hit["time"]) > KNOCKOUT_CREDIT_TIME:
+		return null
+	var attacker: Car = hit["attacker"]
+	return attacker if is_instance_valid(attacker) else null
 
 ## Remembers who last touched a car (any bump or blast), for knockout credit.
 func note_hit(attacker: Car, victim: Car) -> void:
@@ -515,6 +560,7 @@ func _on_perfect_landing(car: Car) -> void:
 ## A car was rammed. Strong enough rams score a hit for the attacker (§7.3.6).
 func _on_bumped(car: Car, attacker: Car, strength: float) -> void:
 	note_hit(attacker, car)
+	mode.on_damage(car, strength)
 	if strength >= car.tuning.bump_score_strength:
 		register_hit(attacker, car)
 	play_effect(&"bump", (car.global_position + attacker.global_position) * 0.5, strength)
@@ -533,9 +579,13 @@ func _on_scores_changed() -> void:
 	_local_score_shown = mine
 
 ## The single choke point for cosmetic effects (later an RPC). Adds camera shake for the local player.
-func play_effect(kind: StringName, pos: Vector3, param: float) -> void:
-	_effects.play(kind, pos, param)
-	if (kind == &"explosion" or kind == &"splash") and local_car != null:
+## color: tint for effects that need one (confetti, car burst).
+## from / to: nodes the effect stays attached to while it plays (the Shocker's bolts run from the user to each
+## shocked car). Over the network they become player ids.
+func play_effect(kind: StringName, pos: Vector3, param: float, color: Color = Color.WHITE, from: Node3D = null,
+		to: Node3D = null) -> void:
+	_effects.play(kind, pos, param, color, from, to)
+	if (kind == &"explosion" or kind == &"splash" or kind == &"car_burst") and local_car != null:
 		var d := local_car.global_position.distance_to(pos)
 		camera_rig.add_trauma(clampf(1.0 - d / (param * EXPLOSION_SHAKE_RANGE), 0.0, 1.0) * EXPLOSION_SHAKE)
 	effect_played.emit(kind, pos, param)

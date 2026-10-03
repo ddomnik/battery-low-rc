@@ -12,6 +12,8 @@ const SPAWN_RADIUS := 32.0
 const ITEM_RING_COUNT := 8
 const ITEM_RING_RADIUS := 24.0
 const ITEM_HEIGHT := 0.8             # box center above the surface
+const PARTICLE_COLLISION_BOTTOM := -1.0
+const PARTICLE_COLLISION_HEIGHT := 10.0   # covers the floor up to the pillar tops
 
 var with_walls: bool = true           # set before adding to the tree ("Last on table" removes them)
 var spawn_points: Array[Marker3D] = []
@@ -20,6 +22,7 @@ var item_spawn_points: Array[Marker3D] = []
 func _ready() -> void:
 	_build_environment()
 	_build_geometry()
+	_build_particle_collision()
 	_build_spawn_points()
 	_build_item_spawns()
 
@@ -102,6 +105,18 @@ func _build_geometry() -> void:
 		pad.name = "ChargingPad_%d_%d" % [int(p.x), int(p.z)]
 		pad.position = p
 		add_child(pad)
+
+## GPU particles (oil / glue drops) land on the arena surfaces, slopes included. Baked once from the
+## static geometry (render layer "world"); cars and transparent props are not part of it.
+func _build_particle_collision() -> void:
+	var hf := GPUParticlesCollisionHeightField3D.new()
+	hf.name = "ParticleCollision"
+	hf.size = Vector3(HALF_SIZE * 2.0 + WALL_THICKNESS * 4.0, PARTICLE_COLLISION_HEIGHT, HALF_SIZE * 2.0 + WALL_THICKNESS * 4.0)
+	hf.position = Vector3(0.0, PARTICLE_COLLISION_BOTTOM + PARTICLE_COLLISION_HEIGHT * 0.5, 0.0)
+	hf.resolution = GPUParticlesCollisionHeightField3D.RESOLUTION_1024
+	hf.update_mode = GPUParticlesCollisionHeightField3D.UPDATE_MODE_WHEN_MOVED
+	hf.heightfield_mask = Layers.RENDER_WORLD
+	add_child(hf)
 
 ## 10 markers on a circle, facing the center.
 func _build_spawn_points() -> void:

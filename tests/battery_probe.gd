@@ -228,6 +228,29 @@ func _boost() -> void:
 	await _ticks(5)
 	_check("no boost with an empty battery", _car.is_boosting, not _car.is_boosting)
 
+	# Held boost that ran dry stays off even when a little charge comes in (no endless pulsing boost).
+	await _place(Vector3(-42.0, 0.8, -30.0), Vector3.RIGHT, 0.0)
+	_car.set_battery(0.05)
+	_input.boost = true
+	await _ticks(20)
+	var drained := _car.battery
+	var boosted_again := false
+	for i in 40:
+		_car.set_battery(maxf(_car.battery, 0.2))   # stand-in for drift / air / pad charge
+		await get_tree().physics_frame
+		boosted_again = boosted_again or _car.is_boosting
+	_check("ran dry while held: no boost again, even after charging", "%.2f, %s" % [drained, boosted_again],
+		drained <= 0.0 and not boosted_again)
+	_input.boost = false
+	await _ticks(2)
+	_input.boost = true
+	await _ticks(2)
+	_check("…until boost is pressed again", _car.is_boosting, _car.is_boosting)
+	var before := _car.battery
+	await _ticks(10)
+	_check("nothing charges while boosting", "%.3f → %.3f" % [before, _car.battery], _car.battery < before)
+	_input.boost = false
+
 func _debug_keys() -> void:
 	_header("Debug keys")
 	_car.set_battery(0.0)
