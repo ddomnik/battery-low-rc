@@ -251,6 +251,16 @@ func _boost() -> void:
 	_check("nothing charges while boosting", "%.3f → %.3f" % [before, _car.battery], _car.battery < before)
 	_input.boost = false
 
+	# The start battery (0.3) doesn't drain to exactly 0 in float steps; it must still end empty, not boost forever.
+	await _place(Vector3(-42.0, 0.8, -30.0), Vector3.RIGHT, 0.0)
+	await _ticks(2)
+	_car.set_battery(_car.tuning.start_battery)
+	_input.boost = true
+	await _ticks(int(_car.tuning.start_battery / _car.tuning.boost_drain_rate * 60.0) + 15)
+	_check("the start battery runs dry and boost stops", "%s, boosting %s" % [_car.battery, _car.is_boosting],
+		_car.battery == 0.0 and not _car.is_boosting)
+	_input.boost = false
+
 func _debug_keys() -> void:
 	_header("Debug keys")
 	_car.set_battery(0.0)

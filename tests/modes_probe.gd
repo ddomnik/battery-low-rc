@@ -106,6 +106,12 @@ func _lives() -> void:
 	_check("camera stays on your spot for a moment, then spectates", lingering, lingering and m.camera_rig.target != m.local_car)
 	var ended := await _play(m, MAX_TICKS)
 	_info("cars out when the round ended", m.eliminated_order.size())
+	if not ended:
+		for c in m.alive_cars():
+			_info("still in at the time cap (diagnostic)", "%s pos %s v %.1f up %.2f item %s score %s grounded %d target %s" % [
+				c.display_name, c.global_position, c.linear_velocity.length(), c.global_basis.y.y,
+				c.held_item.id if c.held_item else &"-", m.mode.score_text(c), c.grounded_count,
+				c.input_provider.get("_target_car")])
 	# The last two can go out on the same tick (blast, falling off together): a draw also ends the round.
 	_check("bots play it out: ends with one car left (or a draw)", m.eliminated_order.size(),
 		ended and m.eliminated_order.size() >= m.cars.size() - 1)

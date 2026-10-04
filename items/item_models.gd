@@ -13,6 +13,17 @@ const WHITE := Color(0.95, 0.95, 0.92)
 const COPPER := Color(0.85, 0.48, 0.2)
 const HAZARD_YELLOW := Color(1.0, 0.82, 0.15)
 const GLOW_ENERGY := 2.5
+const WOOD := Color(0.62, 0.43, 0.24)
+const ROCKET_RED := Color(0.9, 0.12, 0.1)
+const ROCKET_WHITE := Color(0.97, 0.96, 0.92)
+# Firework rocket (scale 1 = the flying size): body, nose cone and guide stick, along −Z.
+const ROCKET_BODY_RADIUS := 0.12
+const ROCKET_BODY_LENGTH := 0.5
+const ROCKET_NOSE_LENGTH := 0.26
+const ROCKET_STICK_RADIUS := 0.022
+const ROCKET_STICK_LENGTH := 0.95
+const ROOF_ROCKET_SCALE := 0.6
+const ROOF_ROCKET_TILT_DEG := 20.0   # roof rockets point a little up
 
 static var _muzzles: Dictionary = {}   # item id → muzzle position in model space
 
@@ -50,9 +61,9 @@ static func _placeholder(item: ItemDef) -> Node3D:
 	root.name = "ItemModel_%s" % item.id
 	match item.id:
 		&"bottle_rocket":
-			_launcher(root, PackedFloat32Array([0.0]), 0.09, 0.7, item.color)
+			_launcher(root, PackedFloat32Array([0.0]))
 		&"rocket_trio":
-			_launcher(root, PackedFloat32Array([-0.17, 0.0, 0.17]), 0.07, 0.6, item.color)
+			_launcher(root, PackedFloat32Array([-0.17, 0.0, 0.17]))
 		&"water_balloon":
 			_part(root, _cylinder(0.12, 0.12, 0.06), DARK, Vector3(0.0, 0.03, 0.0))
 			_part(root, _cylinder(0.025, 0.025, 0.22), METAL, Vector3(0.0, 0.15, 0.0))
@@ -90,16 +101,40 @@ static func _placeholder(item: ItemDef) -> Node3D:
 			_part(root, BoxMesh.new(), item.color, Vector3(0.0, 0.25, 0.0)).scale = Vector3.ONE * 0.4
 	return root
 
-## Launch tubes on a small swivel base, a rocket tip peeking out of each.
-static func _launcher(root: Node3D, xs: PackedFloat32Array, radius: float, length: float, tip: Color) -> void:
-	var tube_y := 0.27
-	_part(root, BoxMesh.new(), DARK, Vector3(0.0, 0.04, 0.0)).scale = Vector3(0.3 + 0.2 * (xs.size() - 1), 0.08, 0.3)
-	_part(root, _cylinder(0.05, 0.05, 0.16), METAL, Vector3(0.0, 0.15, 0.0))
+## Firework rockets resting on a little wooden rack, noses up and forward, sticks trailing back.
+static func _launcher(root: Node3D, xs: PackedFloat32Array) -> void:
+	var rack_width := 0.3 + 0.2 * (xs.size() - 1)
+	var rocket_y := 0.22
+	_part(root, BoxMesh.new(), DARK, Vector3(0.0, 0.03, 0.0)).scale = Vector3(rack_width, 0.06, 0.3)
+	for z: float in [-0.12, 0.14]:
+		_part(root, BoxMesh.new(), WOOD, Vector3(0.0, 0.12, z)).scale = Vector3(rack_width, 0.12, 0.05)
+	var tilt := Basis(Vector3.RIGHT, deg_to_rad(ROOF_ROCKET_TILT_DEG))
 	for x in xs:
-		_part(root, _cylinder(radius, radius, length), METAL, Vector3(x, tube_y, -0.05), Vector3(-90.0, 0.0, 0.0), 0.0, 0.6, 0.3)
-		_part(root, _cylinder(0.0, radius * 0.8, radius * 1.8), tip, Vector3(x, tube_y, -0.05 - length * 0.5 - radius * 0.7),
-			Vector3(-90.0, 0.0, 0.0))
-	_muzzle(root, Vector3(0.0, tube_y, -0.05 - length * 0.5 - radius * 1.6))
+		var rocket := firework_rocket(ROOF_ROCKET_SCALE)
+		rocket.transform = Transform3D(tilt, Vector3(x, rocket_y, 0.0))
+		root.add_child(rocket)
+	var nose := Vector3(0.0, 0.0, -(ROCKET_BODY_LENGTH * 0.5 + ROCKET_NOSE_LENGTH) * ROOF_ROCKET_SCALE)
+	_muzzle(root, Vector3(0.0, rocket_y, 0.0) + tilt * nose)
+
+## Firework rocket along −Z, origin at the body's center: red body with a white band, red / white nose cone,
+## long wooden guide stick along one side. Shared by the flying rocket and the roof launchers.
+static func firework_rocket(scale: float = 1.0) -> Node3D:
+	var r := Node3D.new()
+	r.name = "FireworkRocket"
+	var along := Vector3(-90.0, 0.0, 0.0)   # cylinder axis (Y) along −Z
+	var body := ROCKET_BODY_RADIUS * scale
+	var length := ROCKET_BODY_LENGTH * scale
+	var nose := ROCKET_NOSE_LENGTH * scale
+	_part(r, _cylinder(body, body, length), ROCKET_RED, Vector3.ZERO, along)
+	_part(r, _cylinder(body * 1.03, body * 1.03, length * 0.22), ROCKET_WHITE, Vector3(0.0, 0.0, -length * 0.12), along)
+	_part(r, _cylinder(body * 0.55, body * 1.08, nose * 0.5), ROCKET_WHITE, Vector3(0.0, 0.0, -(length + nose * 0.5) * 0.5), along)
+	_part(r, _cylinder(0.0, body * 0.55, nose * 0.5), ROCKET_RED, Vector3(0.0, 0.0, -(length * 0.5 + nose * 0.75)), along)
+	var stick := ROCKET_STICK_LENGTH * scale
+	_part(r, _cylinder(ROCKET_STICK_RADIUS * scale, ROCKET_STICK_RADIUS * scale, stick), WOOD,
+		Vector3(body + ROCKET_STICK_RADIUS * scale, 0.0, stick * 0.5 - length * 0.3), along)
+	for mi in r.get_children():
+		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return r
 
 static func _muzzle(root: Node3D, pos: Vector3) -> void:
 	var m := Marker3D.new()

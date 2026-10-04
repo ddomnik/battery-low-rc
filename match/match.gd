@@ -488,7 +488,8 @@ func spawn_puddle(item: ItemDef, pos: Vector3) -> void:
 	play_effect(&"splat", hit.position, item.explosion_radius, item.color)
 
 ## Knocks back every car in the radius (linear falloff) and scores hits for the attacker.
-## spin = random yaw twist, tumble = tip-away spin (both rad/s at the center). effect = &"explosion" or &"splash".
+## spin = random yaw twist, tumble = tip-away spin (both rad/s at the center). effect = &"explosion", &"firework"
+## or &"splash".
 ## skip: a car the blast leaves alone (the sticky bomb's holder, which gets its own launch).
 func explode(pos: Vector3, radius: float, strength: float, up_strength: float, attacker: Car,
 		spin: float = 3.0, tumble: float = 1.5, effect: StringName = &"explosion", skip: Car = null) -> void:
@@ -585,7 +586,7 @@ func _on_scores_changed() -> void:
 func play_effect(kind: StringName, pos: Vector3, param: float, color: Color = Color.WHITE, from: Node3D = null,
 		to: Node3D = null) -> void:
 	_effects.play(kind, pos, param, color, from, to)
-	if (kind == &"explosion" or kind == &"splash" or kind == &"car_burst") and local_car != null:
+	if (kind == &"explosion" or kind == &"firework" or kind == &"splash" or kind == &"car_burst") and local_car != null:
 		var d := local_car.global_position.distance_to(pos)
 		camera_rig.add_trauma(clampf(1.0 - d / (param * EXPLOSION_SHAKE_RANGE), 0.0, 1.0) * EXPLOSION_SHAKE)
 	effect_played.emit(kind, pos, param)

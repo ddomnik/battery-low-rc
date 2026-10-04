@@ -14,6 +14,25 @@ const SPARK_COLOR := Color(1.0, 0.9, 0.4)
 const SHOCK_COLOR := Color(0.45, 0.85, 1.0)
 const RING_COLOR := Color(0.4, 0.95, 1.0)
 const SPLASH_COLOR := Color(0.35, 0.65, 1.0)
+const DEBRIS_COLOR := Color(0.2, 0.2, 0.22)
+const FIREWORK_LIGHT_ENERGY := 10.0
+const FIREWORK_LIGHT_TIME := 0.5
+const EXPLOSION_LIGHT_ENERGY := 8.0
+const SPLASH_BUBBLE_ALPHA := 0.35
+const PICKUP_COLORS := [Color("#FF595E"), Color("#FFCA3A"), Color("#8AC926"), Color("#1982C4"), Color("#FFFFFF")]
+const DUST_PER_IMPACT := 0.4         # dust puffs per m/s of impact
+const BALLOON_CONFETTI := 28         # flakes per popped balloon …
+const BALLOON_CONFETTI_SPEED := 5.0
+const BALLOON_CONFETTI_LIFETIME := 1.1
+const BALLOON_CONFETTI_SCALE := Vector2(0.35, 0.6)   # … at this share of the full flake size
+## Blast shells, inside out: color, start / end radius (× blast radius), time, alpha, delay.
+const BLAST_LAYERS: Array[Array] = [
+	[Color(1.0, 1.0, 0.9), 0.1, 0.45, 0.2, 0.9, 0.0],
+	[Color(1.0, 0.85, 0.3), 0.15, 0.7, 0.3, 0.7, 0.03],
+	[Color(1.0, 0.5, 0.15), 0.2, 0.95, 0.45, 0.5, 0.06],
+	[Color(0.85, 0.25, 0.1), 0.3, 1.1, 0.6, 0.35, 0.1],
+	[Color(0.4, 0.4, 0.42), 0.4, 1.3, 0.9, 0.25, 0.15],
+]
 const LOUD_IMPACT := 20.0            # bump strength / crash speed (m/s) that plays at full volume
 const QUIET_IMPACT_GAIN := 0.35      # softest impact volume (linear)
 const THROW_PITCH := 1.5             # balloon throw reuses the rocket launch sound, higher
@@ -57,28 +76,43 @@ func play(kind: StringName, pos: Vector3, param: float, color: Color = Color.WHI
 	var audio := Game.audio
 	match kind:
 		&"confetti":    # balloon popping into confetti of its color
-			_confetti(pos, color, 70, 8.0, 2.2)
+			_confetti(pos, color, BALLOON_CONFETTI, BALLOON_CONFETTI_SPEED, BALLOON_CONFETTI_LIFETIME, BALLOON_CONFETTI_SCALE)
 			audio.play_at(&"splash", pos, 0.0, POP_PITCH)
 		&"car_burst":   # sticky bomb victim breaking apart; color = the car's color
 			_explosion(pos, 3.5, EXPLOSION_COLOR)
 			_burst(pos, color, 40, 9.0, 1.1, 0.35)
 			_burst(pos, Color(0.15, 0.15, 0.18), 20, 7.0, 1.0, 0.25)
+			ParticleFx.blast(self, pos, 3.5, color)
+			_light(pos + Vector3.UP, EXPLOSION_COLOR, EXPLOSION_LIGHT_ENERGY, 10.0, 0.4)
 			audio.play_at(&"explosion", pos)
-		&"explosion":   # rocket; param = radius
-			_explosion(pos, param, EXPLOSION_COLOR)
+		&"firework":    # firework rocket: random shell, palette and size; param = radius
+			var main := ParticleFx.firework(self, pos, param, _rng)
+			_light(pos, main, FIREWORK_LIGHT_ENERGY, param * 3.0, FIREWORK_LIGHT_TIME)
+			_bubble(pos, Color.WHITE, param * 0.1, param * 0.45, 0.12, 0.9, true)
+			audio.play_at(&"explosion", pos, 0.0, _rng.randf_range(0.9, 1.2))
+		&"explosion":   # Blast, sticky bomb: layered see-through fire shells, no particles; param = radius
+			for layer in BLAST_LAYERS:
+				_bubble(pos, layer[0], param * layer[1], param * layer[2], layer[3], layer[4], false, layer[5])
+			_light(pos + Vector3.UP, EXPLOSION_COLOR, EXPLOSION_LIGHT_ENERGY, param * 2.5, 0.4)
 			audio.play_at(&"explosion", pos)
 		&"splash":      # water balloon; param = radius
-			_explosion(pos, param, SPLASH_COLOR)
+			_bubble(pos, SPLASH_COLOR, param * EXPLOSION_START_SCALE, param, EXPLOSION_TIME, SPLASH_BUBBLE_ALPHA)
+			ParticleFx.water(self, pos, param, SPLASH_COLOR)
+			_ring(pos + Vector3.DOWN * 0.3, 0.5, param * 1.2, 0.5, SPLASH_COLOR.lightened(0.4))
 			audio.play_at(&"splash", pos)
 		&"pickup":
 			_burst(pos, POOF_COLOR, 16, 3.0, 0.5, 0.18)
 			_bubble(pos, POOF_COLOR, 0.4, 1.2, 0.25, 0.5)
+			ParticleFx.sparks(self, pos, PackedColorArray(PICKUP_COLORS), 36, 6.0, 0.8)
 			audio.play_at(&"pickup", pos)
 		&"fire":        # rocket launch
 			_bubble(pos, FLASH_COLOR, 0.15, 0.45, 0.1, 0.9)
+			ParticleFx.sparks(self, pos, PackedColorArray([SPARK_COLOR]), 20, 4.0, 0.4)
+			ParticleFx.smoke(self, pos, 5, 0.8, 0.6, Vector2(0.3, 1.0))
 			audio.play_at(&"launch", pos)
-		&"throw":       # water balloon launch
+		&"throw":       # water balloon / oil / glue launch
 			_bubble(pos, SPLASH_COLOR, 0.15, 0.4, 0.1, 0.7)
+			ParticleFx.smoke(self, pos, 4, 0.6, 0.5, Vector2(0.3, 0.8))
 			audio.play_at(&"launch", pos, 0.0, THROW_PITCH)
 		&"shock":       # Shocker activated; param = reach, from = the user
 			_light(pos + Vector3.UP, SHOCK_FLASH_COLOR, SHOCK_LIGHT_ENERGY, param * 1.5, SHOCK_LIGHT_TIME)
@@ -98,19 +132,26 @@ func play(kind: StringName, pos: Vector3, param: float, color: Color = Color.WHI
 			_burst(pos, SHOCK_COLOR, 20, 5.0, 0.5, 0.07)
 		&"splat":       # oil / glue puddle appears; param = radius
 			_burst(pos + Vector3.UP * 0.2, color, 24, 4.0, 0.5, 0.18)
+			ParticleFx.water(self, pos + Vector3.UP * 0.2, param * 0.6, color, false)
 			audio.play_at(&"splash", pos, 0.0, SPLAT_PITCH)
 		&"bump":        # car on car; param = bump strength
 			_burst(pos, SPARK_COLOR, 20, 9.0, 0.35, 0.1)
+			ParticleFx.streaks(self, pos, SPARK_COLOR, 24, 10.0, 0.4)
+			ParticleFx.dust(self, pos + Vector3.DOWN * 0.4, clampi(int(param * DUST_PER_IMPACT), 2, 10), 1.0)
 			audio.play_at(&"bump", pos, _impact_db(param))
 		&"wall":        # car into a wall; param = impact speed
 			_burst(pos, SPARK_COLOR, 20, 9.0, 0.35, 0.1)
+			ParticleFx.streaks(self, pos, SPARK_COLOR, 30, 11.0, 0.45)
+			ParticleFx.dust(self, pos + Vector3.DOWN * 0.4, clampi(int(param * DUST_PER_IMPACT), 2, 10), 1.2)
 			audio.play_at(&"wall", pos, _impact_db(param))
 		&"pop":         # balloon popped / car eliminated
 			_burst(pos, POOF_COLOR, 24, 6.0, 0.5, 0.15)
 			_bubble(pos, POOF_COLOR, 0.2, 1.0, 0.15, 0.7)
+			ParticleFx.sparks(self, pos, PackedColorArray([Color.WHITE]), 30, 6.0, 0.6)
 			audio.play_at(&"splash", pos, 0.0, POP_PITCH)
 		&"landing":     # perfect landing
 			_ring(pos, 1.0, 3.0, 0.4, RING_COLOR)
+			ParticleFx.sparks(self, pos + Vector3.UP * 0.3, PackedColorArray([RING_COLOR, Color.WHITE]), 40, 5.0, 0.7)
 			audio.play_at(&"perfect_landing", pos)
 		_:
 			push_warning("Effects: unknown effect '%s'" % kind)
@@ -123,9 +164,9 @@ func _explosion(pos: Vector3, radius: float, color: Color) -> void:
 	_bubble(pos, color, radius * EXPLOSION_START_SCALE, radius, EXPLOSION_TIME, EXPLOSION_ALPHA)
 	_burst(pos, color, 28, radius * 2.5, 0.7, 0.2)
 
-## Expanding, fading unshaded sphere. additive = glowing flash.
+## Expanding, fading unshaded sphere. additive = glowing flash. delay: s before it appears.
 func _bubble(pos: Vector3, color: Color, start_radius: float, end_radius: float, time: float, alpha: float,
-		additive: bool = false) -> void:
+		additive: bool = false, delay: float = 0.0) -> void:
 	var mat := _fade_material(color, alpha)
 	if additive:
 		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
@@ -137,11 +178,15 @@ func _bubble(pos: Vector3, color: Color, start_radius: float, end_radius: float,
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.scale = Vector3.ONE * start_radius
+	mi.visible = delay <= 0.0
 	var root := _root(pos)
 	root.add_child(mi)
 	var tw := root.create_tween().set_parallel()
-	tw.tween_property(mi, "scale", Vector3.ONE * end_radius, time).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_property(mat, "albedo_color:a", 0.0, time)
+	if delay > 0.0:
+		tw.tween_callback(mi.show).set_delay(delay)
+	tw.tween_property(mi, "scale", Vector3.ONE * end_radius, time).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC) \
+		.set_delay(delay)
+	tw.tween_property(mat, "albedo_color:a", 0.0, time).set_delay(delay)
 	tw.chain().tween_callback(root.queue_free)
 
 ## Short bright light that dies away (flashes light up the ground and the cars around).
@@ -186,8 +231,11 @@ func _ring(pos: Vector3, start_radius: float, end_radius: float, time: float, co
 	tw.chain().tween_callback(root.queue_free)
 
 ## Paper confetti: flat flakes that tumble and flutter down. A white color means every color.
-func _confetti(pos: Vector3, color: Color, amount: int, speed: float, lifetime: float) -> void:
+func _confetti(pos: Vector3, color: Color, amount: int, speed: float, lifetime: float,
+		scale_range: Vector2 = Vector2(CONFETTI_MIN_SCALE, 1.0)) -> void:
 	var p := confetti_particles(color)
+	p.scale_amount_min = scale_range.x
+	p.scale_amount_max = scale_range.y
 	p.one_shot = true
 	p.explosiveness = 0.9
 	p.randomness = 1.0

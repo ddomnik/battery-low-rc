@@ -611,7 +611,9 @@ func get_muzzle_position(item: ItemDef = null) -> Vector3:
 
 func set_battery(v: float) -> void:
 	var nv := clampf(v, 0.0, 1.0)
-	if not is_equal_approx(nv, battery):
+	# Exact compare: is_equal_approx would refuse the last step from a few-millionths to 0 and leave an
+	# "empty" battery that keeps boosting forever.
+	if nv != battery:
 		battery = nv
 		battery_changed.emit(battery)
 

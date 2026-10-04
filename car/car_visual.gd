@@ -57,6 +57,10 @@ const SPLASH_SPEED_MIN := 0.6
 const SPLASH_SPEED_MAX := 2.2
 const SPLASH_SPREAD := 75.0
 const SPLASH_BOUNCE := 0.15
+const LANDING_DUST_MIN_AIR := 0.35 # s of airtime before a landing kicks up dust …
+const LANDING_DUST_PER_SECOND := 10.0 # … this many puffs per second of airtime …
+const LANDING_DUST_MAX := 16 # … up to this many
+const CHARGE_SPARK_COLOR := Color(0.55, 0.95, 1.0) # rising sparks while a charging pad fills the battery
 const SHADOW_SIZE := Vector3(1.6, 12.0, 2.4)
 const ENGINE_PITCH_IDLE := 0.8 # engine pitch at standstill …
 const ENGINE_PITCH_TOP := 1.6 # … and at boost top speed
@@ -109,6 +113,8 @@ var _exhaust: Node3D = null
 var _exhaust_mats: Array[ShaderMaterial] = []
 var _exhaust_amount: float = 0.0
 var _shock_sparks: CPUParticles3D = null
+var _charge_sparks: GPUParticles3D = null
+var _air_peak: float = 0.0 # longest airtime of the current jump (landing dust)
 var _splatter: Array[GPUParticles3D] = [] # per wheel: oil / glue drops flung off a coated tire
 var _splash: Array[GPUParticles3D] = [] # per wheel: droplets where those drops land
 var _splash_linger: Array[float] = []
@@ -160,6 +166,7 @@ func setup(model_scene: PackedScene, tuning: CarTuning, color: Color, is_local: 
 	_build_splatter(tuning, ground_y)
 	_build_sounds()
 	_build_shock_sparks()
+	_build_charge_sparks()
 
 func _process(delta: float) -> void:
 	if car == null:
@@ -191,6 +198,10 @@ func _process(delta: float) -> void:
 	_update_splatter(delta)
 	if _shock_sparks != null and _shock_sparks.emitting != (car.shock_left > 0.0):
 		_shock_sparks.emitting = car.shock_left > 0.0
+	var charging := car.pad_overlaps > 0 and car.battery < 1.0 and not car.eliminated
+	if _charge_sparks != null and _charge_sparks.emitting != charging:
+		_charge_sparks.emitting = charging
+	_update_landing_dust()
 	if _label != null:
 		_label.visible = Settings.show_name_labels
 	_update_sounds(delta)
@@ -701,6 +712,41 @@ func _curve_texture(points: Array[Vector2]) -> CurveTexture:
 	var tex := CurveTexture.new()
 	tex.curve = curve
 	return tex
+
+## Dust bursts out from under the car when it comes down from a real jump.
+func _update_landing_dust() -> void:
+	if car.grounded_count == 0:
+		_air_peak = maxf(_air_peak, car.air_time)
+		return
+	if _air_peak >= LANDING_DUST_MIN_AIR and car.grounded_count >= 2 and not car.eliminated:
+		var puffs := mini(int(_air_peak * LANDING_DUST_PER_SECOND) + 3, LANDING_DUST_MAX)
+		var ground := car.get_global_transform_interpolated().origin + Vector3.DOWN * 0.4
+		ParticleFx.dust(car.get_parent() as Node3D, ground, puffs, 1.4)
+	_air_peak = 0.0
+
+## Sparks rising around a car while a charging pad fills its battery.
+func _build_charge_sparks() -> void:
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(0.8, 0.1, 1.1)
+	pm.direction = Vector3.UP
+	pm.spread = 10.0
+	pm.initial_velocity_min = 1.0
+	pm.initial_velocity_max = 2.5
+	pm.gravity = Vector3.ZERO
+	pm.scale_min = 0.5
+	pm.scale_max = 1.2
+	var ramp := GradientTexture1D.new()
+	ramp.gradient = ParticleFx.gradient(PackedColorArray([Color(CHARGE_SPARK_COLOR, 0.0), Color.WHITE,
+		CHARGE_SPARK_COLOR, Color(CHARGE_SPARK_COLOR, 0.0)]))
+	pm.color_ramp = ramp
+	_charge_sparks = ParticleFx.continuous(pm, ParticleFx.spark_mesh(0.2), 30, 0.8)
+	_charge_sparks.name = "ChargeSparks"
+	_charge_sparks.emitting = false
+	_charge_sparks.position.y = -0.3
+	_charge_sparks.layers = Layers.RENDER_CARS
+	_charge_sparks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_charge_sparks)
 
 ## Blue electric sparks crackling around a car slowed by the Shocker.
 func _build_shock_sparks() -> void:

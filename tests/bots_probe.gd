@@ -232,7 +232,7 @@ func _bots_match() -> void:
 	var fired_items := fired[0]
 	var pickups := _count(&"pickup")
 	var bumps := _count(&"bump")
-	var explosions := _count(&"explosion")
+	var explosions := _count(&"explosion") + _count(&"firework")
 	_info("wall-clock time per tick, no rendering (ms, budget 16.7)", per_tick)
 	_info("bots' average speed (m/s)", speed_sum / (samples * 9.0))
 	_info("pickups / items used / explosions / bumps+crashes", "%d / %d / %d / %d" % [pickups, fired_items, explosions, bumps])

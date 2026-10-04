@@ -547,7 +547,7 @@ func _fire(id: StringName, target: Vector3, expected: int) -> Array[Vector3]:
 		t += TICK
 		hits.clear()
 		for e in _effects:
-			if e["kind"] == &"explosion" or e["kind"] == &"splash":
+			if e["kind"] == &"firework" or e["kind"] == &"explosion" or e["kind"] == &"splash":
 				hits.append(e["pos"])
 	_check("fired: %d explosion(s), muzzle flash" % expected, hits.size(), hits.size() == expected and _count(&"fire") + _count(&"throw") == 1)
 	await _ticks(30)

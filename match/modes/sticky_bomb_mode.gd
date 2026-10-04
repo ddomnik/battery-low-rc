@@ -1,6 +1,7 @@
 class_name StickyBombMode
 extends GameMode
-## Sticky bomb: a random car carries a bomb with a countdown and passes it on by touching another car.
+## Sticky bomb: a random car drags a bomb on a chain (cosmetic swing / drag) with a countdown and passes it on
+## by touching another car.
 ## At zero it explodes: the holder is out and a fresh bomb goes to a random survivor. Last car left wins.
 
 const PASS_COOLDOWN := 1.0           # s after a hand-over before the bomb can move again (no instant pass-back)
@@ -12,8 +13,18 @@ const LAUNCH_SPIN := 7.0             # … spinning (rad/s around a random tilte
 const MIN_FLIGHT := 0.5              # s before a touchdown counts
 const MAX_FLIGHT := 4.0              # bursts after this long even without touching anything
 const BURST_RADIUS := 3.5            # camera shake size of the burst
-const BOMB_RADIUS := 0.5
-const BOMB_HEIGHT := 1.35            # car-local, on the roof
+const BOMB_RADIUS := 0.42
+const CHAIN_ANCHOR := Vector3(0.0, 0.0, 1.0)   # car-local, the middle of the rear
+const CHAIN_LENGTH := 1.4            # anchor to the bomb's surface
+const CHAIN_LINKS := 9
+const CHAIN_LINK_RADII := Vector2(0.035, 0.075)   # torus inner / outer
+const CHAIN_LINK_STRETCH := 1.5      # links are oval along the chain
+const CHAIN_SAG := 0.6               # how much slack hangs down (share of the missing length)
+const CHAIN_COLOR := Color(0.42, 0.43, 0.46)
+const BOMB_GRAVITY := 20.0           # the bomb swings and drops (cosmetic, matches the cars' gravity × 2)
+const BOMB_AIR_DAMPING := 1.2        # 1/s
+const BOMB_GROUND_FRICTION := 5.0    # 1/s, sliding along the ground
+const FLOOR_PROBE := 3.0
 const FUSE_BLINK_FAST_BELOW := 3.0   # s left when the light starts blinking fast
 const LABEL_FONT_SIZE := 64
 const LABEL_HEIGHT_ON_BOMB := 0.55    # countdown digits are this tall (m), centered on the bomb …
@@ -32,7 +43,9 @@ var time_left: float = 0.0
 var _cooldown: float = 0.0
 var _doomed: Car = null              # thrown into the air by the bomb; bursts when it comes down
 var _doomed_time: float = 0.0
-var _bomb: Node3D = null
+var _bomb: Node3D = null             # top-level (world space), child of the holder's visual
+var _bomb_prev: Vector3 = Vector3.ZERO   # last frame's position (Verlet)
+var _links: Array[MeshInstance3D] = []
 var _light_mat: StandardMaterial3D = null
 var _label: Label3D = null
 var _sparks: CPUParticles3D = null
@@ -86,6 +99,7 @@ func _process(delta: float) -> void:
 	if _bomb == null or holder == null:
 		return
 	_label.text = str(ceili(maxf(time_left, 0.0)))
+	_swing(delta)
 	_blink += delta * (10.0 if time_left < FUSE_BLINK_FAST_BELOW else 3.0)
 	_light_mat.emission_energy_multiplier = 3.0 if fmod(_blink, 1.0) < 0.5 else 0.2
 	_sparks.speed_scale = SPARK_FAST_SPEED_SCALE if time_left < FUSE_BLINK_FAST_BELOW else 1.0
@@ -145,14 +159,79 @@ func _give_to_random() -> void:
 func _attach(car: Car) -> void:
 	holder = car
 	_bomb.reparent(car.visual, false)
-	_bomb.position = Vector3(0.0, BOMB_HEIGHT, 0.0)
+	_bomb.top_level = true
+	var xf := car.get_global_transform_interpolated()
+	var start := xf * (CHAIN_ANCHOR + Vector3.BACK * (CHAIN_LENGTH + BOMB_RADIUS))
+	_bomb.global_transform = Transform3D(Basis.IDENTITY, start)
+	_bomb_prev = start
 	_bomb.visible = true
+
+## The bomb hangs on its chain behind the holder: it swings, drops, slides along the ground and gets pulled
+## along when the chain is tight (Verlet, per frame; purely cosmetic).
+func _swing(delta: float) -> void:
+	if delta <= 0.0:
+		return
+	var anchor := holder.get_global_transform_interpolated() * CHAIN_ANCHOR
+	var cur := _bomb.global_position
+	var vel := (cur - _bomb_prev) * (1.0 - minf(BOMB_AIR_DAMPING * delta, 1.0))
+	var next := cur + vel + Vector3.DOWN * BOMB_GRAVITY * delta * delta
+	var reach := CHAIN_LENGTH + BOMB_RADIUS
+	var off := next - anchor
+	if off.length() > reach:
+		next = anchor + off.normalized() * reach
+	var floor_y := _floor_below(next)
+	var on_ground := next.y < floor_y + BOMB_RADIUS
+	if on_ground:
+		next.y = floor_y + BOMB_RADIUS
+	_bomb_prev = cur
+	if on_ground:   # friction: take some of the sliding speed out of the history
+		var slide := next - cur
+		_bomb_prev = next - Vector3(slide.x, maxf(slide.y, 0.0), slide.z) * (1.0 - minf(BOMB_GROUND_FRICTION * delta, 1.0))
+	_bomb.global_position = next
+	_update_chain(anchor, next)
+
+func _floor_below(at: Vector3) -> float:
+	var space := holder.get_world_3d().direct_space_state
+	var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(at + Vector3.UP, at + Vector3.DOWN * FLOOR_PROBE, Layers.WORLD))
+	return (hit.position as Vector3).y if not hit.is_empty() else -INF
+
+## Links from the car's rear to the bomb, sagging when there is slack, every other one turned 90°.
+func _update_chain(anchor: Vector3, bomb_pos: Vector3) -> void:
+	var attach := bomb_pos + (anchor - bomb_pos).normalized() * BOMB_RADIUS
+	var span := attach - anchor
+	var sag := maxf(CHAIN_LENGTH - span.length(), 0.0) * CHAIN_SAG
+	for k in _links.size():
+		var t := (k + 0.5) / _links.size()
+		var p := anchor + span * t + Vector3.DOWN * sag * 4.0 * t * (1.0 - t)
+		var dir := span + Vector3.DOWN * sag * 4.0 * (1.0 - 2.0 * t)
+		if dir.length_squared() < 0.0001:
+			continue
+		var up := Vector3.UP if absf(dir.normalized().y) < 0.95 else Vector3.FORWARD
+		var b := Basis.looking_at(dir, up) * Basis(Vector3.FORWARD, PI * 0.5 * (k % 2))
+		_links[k].global_transform = Transform3D(b.scaled_local(Vector3(1.0, 1.0, CHAIN_LINK_STRETCH)), p)
 
 func _build_bomb() -> void:
 	_bomb = Node3D.new()
 	_bomb.name = "StickyBomb"
 	_bomb.visible = false
+	_bomb.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF   # moved per frame by _swing
 	add_child(_bomb)
+	var link_mat := StandardMaterial3D.new()
+	link_mat.albedo_color = CHAIN_COLOR
+	link_mat.metallic = 0.8
+	link_mat.roughness = 0.35
+	var link_mesh := TorusMesh.new()
+	link_mesh.inner_radius = CHAIN_LINK_RADII.x
+	link_mesh.outer_radius = CHAIN_LINK_RADII.y
+	link_mesh.rings = 12
+	link_mesh.ring_segments = 6
+	link_mesh.material = link_mat
+	for k in CHAIN_LINKS:
+		var link := MeshInstance3D.new()
+		link.mesh = link_mesh
+		link.layers = Layers.RENDER_CARS
+		_bomb.add_child(link)
+		_links.append(link)
 	var body_mat := StandardMaterial3D.new()
 	body_mat.albedo_color = Color(0.08, 0.08, 0.1)
 	body_mat.roughness = 0.35

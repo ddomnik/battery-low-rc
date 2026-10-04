@@ -1,12 +1,11 @@
 class_name Projectile
 extends Node3D
-## Rocket or water balloon, moved by a manual sweep every physics tick (deterministic, network-friendly).
+## Firework rocket, water balloon or thrown oil / glue, moved by a manual sweep every physics tick
+## (deterministic, network-friendly). Rockets burst as fireworks and leave a sparkling trail.
 ## The path is evaluated analytically (p0 + v0·t + ½·g·t²), so lobs land exactly where the aim preview says.
 
 const HIT_RADIUS := 0.9              # generous car hit test around the car origin
 const OWNER_IMMUNITY := 0.25         # seconds the shooter can't be hit by its own projectile
-const ROCKET_RADIUS := 0.09
-const ROCKET_LENGTH := 0.5
 const BALLOON_RADIUS := 0.3
 const WOBBLE_SPEED := 14.0
 const WOBBLE_AMOUNT := 0.08
@@ -24,6 +23,7 @@ var _gravity: Vector3 = Vector3.ZERO
 var _age: float = 0.0
 var _body: Node3D = null
 var _tumble_axis: Vector3 = Vector3.RIGHT
+var _trail: Array[GPUParticles3D] = []
 
 ## Call before adding to the tree.
 func launch(m: Match, from_car: Car, item_def: ItemDef, origin: Vector3, velocity: Vector3) -> void:
@@ -52,8 +52,9 @@ func _physics_process(delta: float) -> void:
 		if item.kind == ItemDef.Kind.OIL or item.kind == ItemDef.Kind.GLUE:
 			match_node.spawn_puddle(item, at)
 		else:
-			var effect := &"splash" if item.kind == ItemDef.Kind.BALLOON else &"explosion"
+			var effect := &"splash" if item.kind == ItemDef.Kind.BALLOON else &"firework"
 			match_node.explode(at, item.explosion_radius, item.knockback, item.up_knockback, shooter, item.spin, item.tumble, effect)
+		ParticleFx.release(_trail, get_parent())   # the trail fades out where it is
 		queue_free()
 		return
 	global_position = to
@@ -107,37 +108,22 @@ func _build_visual() -> void:
 		_tumble_axis = Vector3(1.0, 0.3, 0.2).normalized()
 		add_child(_body)
 		return
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = item.color
-	var mi := MeshInstance3D.new()
-	mi.material_override = mat
-	_body = mi
 	if item.aim_type == ItemDef.AimType.LOB:   # water balloon
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = item.color
+		var mi := MeshInstance3D.new()
+		mi.material_override = mat
 		var sphere := SphereMesh.new()
 		sphere.radius = BALLOON_RADIUS
 		sphere.height = BALLOON_RADIUS * 2.0
 		mi.mesh = sphere
+		_body = mi
 		add_child(_body)
 		return
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = ROCKET_RADIUS
-	cyl.bottom_radius = ROCKET_RADIUS
-	cyl.height = ROCKET_LENGTH
-	mi.mesh = cyl
-	_body.rotation.x = -PI * 0.5   # cylinder axis (Y) along the flight direction (−Z)
+	_build_firework_rocket()
+
+## Firework rocket (the same model the roof launchers carry) spitting smoke and sparks out of its fuse end.
+func _build_firework_rocket() -> void:
+	_body = ItemModels.firework_rocket()
 	add_child(_body)
-	var flame := CPUParticles3D.new()
-	flame.position = Vector3(0.0, 0.0, ROCKET_LENGTH * 0.5)
-	flame.amount = 24
-	flame.lifetime = 0.25
-	flame.local_coords = false
-	flame.direction = Vector3(0.0, 0.0, 1.0)
-	flame.spread = 15.0
-	flame.initial_velocity_min = 2.0
-	flame.initial_velocity_max = 4.0
-	flame.gravity = Vector3.ZERO
-	flame.scale_amount_min = 0.6
-	flame.scale_amount_max = 1.0
-	flame.color = Color(1.0, 0.7, 0.2)
-	flame.mesh = Effects.particle_mesh(0.12)
-	add_child(flame)
+	_trail = ParticleFx.rocket_trail(self, Vector3(0.0, 0.0, ItemModels.ROCKET_BODY_LENGTH * 0.5))

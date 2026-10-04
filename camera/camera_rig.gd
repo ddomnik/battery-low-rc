@@ -11,7 +11,7 @@ enum Mode {FOLLOW, FIXED}
 @export var fixed_yaw_deg: float = 0.0 # FIXED mode yaw; 0 = north-up
 @export var yaw_follow_sharpness: float = 3.0 # 1/s; FOLLOW mode, lower = lazier rotation
 @export var follow_min_up_dot: float = 0.5 # heading is only followed while the car is roughly upright
-@export var distance: float = 50.0 # along the view direction; height above the focus = sin(pitch) · distance
+@export var distance: float = 44.35 # along the view direction; height above the focus = sin(pitch) · distance (≈ 31.4 m)
 @export var view_offset: float = -1.0 # m; negative: car sits above screen center (more view behind), positive: below
 @export var fov_deg: float = 35.0 # narrow FOV from far away ≈ near-orthographic readability
 @export var follow_sharpness: float = 3.5 # 1/s; lower = lazier
