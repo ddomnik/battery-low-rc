@@ -69,7 +69,7 @@ const ENGINE_DB_LOCAL := -6.0 # your car
 const ENGINE_DB_OTHER := -15.0 # everyone else (ten engines at once get loud)
 const ENGINE_FADE := 8.0 # 1/s; ground ↔ air engine cross-fade
 const BOOST_DB := -4.0
-const DRIFT_DB := -8.0
+const DRIFT_DB := -16.0
 const SOUND_UNIT_SIZE := 30.0 # the camera listens from ~50 m away
 const SILENT_DB := -60.0
 const SHADOW_TOP := 2.0 # the decal box spans 2 m above to 10 m below the car
@@ -176,7 +176,7 @@ func _process(delta: float) -> void:
 	for i in _pivots.size():
 		var pivot := _pivots[i]
 		var travel := clampf((_rest_spring - car.wheel_spring_len[i]) * SUSPENSION_VISUAL_SCALE,
-			-SUSPENSION_VISUAL_DOWN, SUSPENSION_VISUAL_UP)
+			- SUSPENSION_VISUAL_DOWN, SUSPENSION_VISUAL_UP)
 		_wheel_offset[i] = lerpf(_wheel_offset[i], travel, 1.0 - exp(-SUSPENSION_VISUAL_SHARPNESS * delta))
 		pivot.position.y = _pivot_base[i].y + _wheel_offset[i]
 		_wheel_angle[i] = fposmod(_wheel_angle[i] - car.forward_speed / _visual_wheel_radius * delta * _wheel_spin_sign, TAU)
@@ -184,7 +184,7 @@ func _process(delta: float) -> void:
 		if i < 2:
 			pivot.rotation.y = lerp_angle(pivot.rotation.y, car.last_steer * STEER_VISUAL_ANGLE, steer_blend)
 	if _item_pivot != null:
-		var target := 0.0   # Shocker / Blast sit facing forward
+		var target := 0.0 # Shocker / Blast sit facing forward
 		var d := to_local(car.last_aim_point) - item_mount
 		if _item != null and _item.aim_type != ItemDef.AimType.NONE and Vector2(d.x, d.z).length_squared() > 0.0001:
 			target = atan2(-d.x, -d.z)
@@ -221,7 +221,7 @@ func _setup_model(model_scene: PackedScene, ground_y: float) -> float:
 		push_warning("CarVisual: model has no meshes")
 		return DEFAULT_ROOF_Y
 	var aabb := _in_model(meshes[0]) * meshes[0].get_aabb()
-	var xray := ShaderMaterial.new()   # silhouette in the player color where the car is hidden (§10.1)
+	var xray := ShaderMaterial.new() # silhouette in the player color where the car is hidden (§10.1)
 	xray.shader = XRAY_SHADER
 	xray.set_shader_parameter("color", Color(_base_color, XRAY_ALPHA))
 	for mi in meshes:
@@ -562,7 +562,7 @@ func _build_splatter(tuning: CarTuning, ground_y: float) -> void:
 	_oil_ramp = _color_variations(ItemRegistry.OIL_COLOR, 0.6, 0.1)
 	_glue_ramp = _color_variations(ItemRegistry.GLUE_COLOR, 0.3, 0.3)
 	var drop := _drop_mesh(SPLATTER_DROP_RADIUS, SPLATTER_DROP_RADIUS * 2.0 * SPLATTER_DROP_STRETCH)
-	var droplet := _drop_mesh(SPLASH_DROPLET_RADIUS, SPLASH_DROPLET_RADIUS)   # flattened: lies on the surface
+	var droplet := _drop_mesh(SPLASH_DROPLET_RADIUS, SPLASH_DROPLET_RADIUS) # flattened: lies on the surface
 	var drop_shrink := _curve_texture([Vector2(0.0, 1.0), Vector2(1.0, 0.3)])
 	var droplet_shrink := _curve_texture([Vector2(0.0, 1.0), Vector2(0.6, 1.0), Vector2(1.0, 0.0)])
 	for i in Car.WHEELS:
@@ -624,7 +624,7 @@ func _build_splatter(tuning: CarTuning, ground_y: float) -> void:
 		p.local_coords = false
 		p.emitting = false
 		p.collision_base_size = SPLATTER_DROP_RADIUS
-		p.sub_emitter = NodePath("../" + splash.name)
+		p.sub_emitter = NodePath("../"+ splash.name)
 		p.position = Vector3(m.x, ground_y + tuning.wheel_radius, m.z)
 		p.layers = Layers.RENDER_CARS
 		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
