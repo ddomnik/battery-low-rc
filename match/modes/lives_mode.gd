@@ -18,11 +18,15 @@ const POP_COLOR := Color(1.0, 0.9, 0.3)
 const FLOAT_HEIGHT := 4.0            # a popped balloon rises this far …
 const FLOAT_TIME := 1.0              # … in this time, then bursts into confetti
 
+const HAZARD_PER_BALLOON := 10.0      # fluid damage points per popped balloon
+
 var _lives: Dictionary = {}          # player_id → int
 var _kills: Dictionary = {}          # player_id → int
 var _safe_until: Dictionary = {}     # player_id → match time
 var _balloons: Dictionary = {}       # player_id → Array[Node3D] (one per life, last = next to pop)
 var _time: float = 0.0
+
+var _hazard: Dictionary = {}          # player_id → fluid damage collected toward the next pop
 
 func _ready() -> void:
 	for car in match_node.cars:
@@ -37,6 +41,15 @@ func on_round_end() -> void:
 
 func on_scoring_hit(attacker: Car, victim: Car) -> void:
 	_pop(victim, attacker)
+
+## Fluid damage adds up; every HAZARD_PER_BALLOON points pops a balloon (the usual safe time applies), credited to
+## whoever pushed the car in.
+func on_hazard_damage(car: Car, amount: float, attacker: Car) -> void:
+	var total: float = _hazard.get(car.player_id, 0.0) + amount
+	if total >= HAZARD_PER_BALLOON:
+		total -= HAZARD_PER_BALLOON
+		_pop(car, attacker)
+	_hazard[car.player_id] = total
 
 func on_fell_off(car: Car) -> bool:
 	_pop(car, match_node.last_attacker(car), true)

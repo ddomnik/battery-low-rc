@@ -1,0 +1,1614 @@
+{
+ "author": "Battery Low!",
+ "floor": {
+  "color": "#543703",
+  "material": "color",
+  "size": [
+   100.0,
+   100.0
+  ]
+ },
+ "format": 1,
+ "items": [
+  {
+   "pos": [
+    11.863,
+    1.957,
+    28.64
+   ]
+  },
+  {
+   "pos": [
+    28.64,
+    2.304,
+    11.863
+   ]
+  },
+  {
+   "pos": [
+    21.773,
+    1.816,
+    -9.019
+   ]
+  },
+  {
+   "pos": [
+    9.585,
+    2.034,
+    -23.141
+   ]
+  },
+  {
+   "pos": [
+    -11.863,
+    2.812,
+    -28.64
+   ]
+  },
+  {
+   "pos": [
+    -28.64,
+    2.368,
+    -11.863
+   ]
+  },
+  {
+   "pos": [
+    -28.64,
+    1.457,
+    11.863
+   ]
+  },
+  {
+   "pos": [
+    -11.863,
+    1.233,
+    28.64
+   ]
+  },
+  {
+   "pos": [
+    31.0,
+    7.581,
+    -29.0
+   ]
+  }
+ ],
+ "light": {
+  "ambient": 0.7,
+  "sun_rotation": [
+   -48.0,
+   30.0,
+   0.0
+  ]
+ },
+ "name": "Hills",
+ "objects": [
+  {
+   "collision": "mesh",
+   "model": "map/terrain",
+   "pos": [
+    0.0,
+    0.1,
+    0.0
+   ],
+   "rot": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default_dark",
+   "pos": [
+    5.47,
+    1.035,
+    30.155
+   ],
+   "rot": [
+    -2.156,
+    -44.344,
+    -4.395
+   ],
+   "scale": [
+    3.269,
+    3.269,
+    3.269
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_fat",
+   "pos": [
+    -17.344,
+    -0.323,
+    31.712
+   ],
+   "rot": [
+    5.831,
+    68.807,
+    -3.885
+   ],
+   "scale": [
+    4.268,
+    4.268,
+    4.268
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default",
+   "pos": [
+    13.652,
+    0.48,
+    42.634
+   ],
+   "rot": [
+    1.619,
+    127.614,
+    4.215
+   ],
+   "scale": [
+    4.778,
+    4.778,
+    4.778
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_tallB",
+   "pos": [
+    30.294,
+    0.629,
+    5.065
+   ],
+   "rot": [
+    3.829,
+    45.881,
+    -0.938
+   ],
+   "scale": [
+    3.2,
+    3.2,
+    3.2
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_detailed",
+   "pos": [
+    -30.433,
+    0.49,
+    41.455
+   ],
+   "rot": [
+    3.784,
+    88.105,
+    5.709
+   ],
+   "scale": [
+    3.235,
+    3.235,
+    3.235
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_oak_fall",
+   "pos": [
+    -15.69,
+    0.925,
+    40.189
+   ],
+   "rot": [
+    1.629,
+    152.993,
+    5.576
+   ],
+   "scale": [
+    3.786,
+    3.786,
+    3.786
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_cone",
+   "pos": [
+    -1.35,
+    0.699,
+    43.001
+   ],
+   "rot": [
+    -5.174,
+    -78.073,
+    -2.141
+   ],
+   "scale": [
+    4.873,
+    4.873,
+    4.873
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_tallB",
+   "pos": [
+    21.629,
+    0.918,
+    13.36
+   ],
+   "rot": [
+    -3.697,
+    -47.895,
+    3.479
+   ],
+   "scale": [
+    2.203,
+    2.203,
+    2.203
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineTallB",
+   "pos": [
+    26.64,
+    6.058,
+    -29.514
+   ],
+   "rot": [
+    4.359,
+    -138.234,
+    1.233
+   ],
+   "scale": [
+    3.494,
+    3.494,
+    3.494
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default",
+   "pos": [
+    34.246,
+    6.161,
+    -27.284
+   ],
+   "rot": [
+    1.529,
+    163.582,
+    -1.15
+   ],
+   "scale": [
+    4.035,
+    4.035,
+    4.035
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_oak",
+   "pos": [
+    -12.593,
+    0.314,
+    24.792
+   ],
+   "rot": [
+    -3.734,
+    131.118,
+    0.673
+   ],
+   "scale": [
+    4.253,
+    4.253,
+    4.253
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/stone_largeC",
+   "pos": [
+    39.069,
+    1.108,
+    39.241
+   ],
+   "rot": [
+    -3.065,
+    62.2,
+    -0.399
+   ],
+   "scale": [
+    2.802,
+    2.802,
+    2.802
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_detailed",
+   "pos": [
+    0.271,
+    0.698,
+    28.49
+   ],
+   "rot": [
+    5.501,
+    -73.974,
+    -2.247
+   ],
+   "scale": [
+    4.109,
+    4.109,
+    4.109
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_cone",
+   "pos": [
+    -4.599,
+    0.628,
+    -38.399
+   ],
+   "rot": [
+    0.114,
+    -107.434,
+    -0.241
+   ],
+   "scale": [
+    4.725,
+    4.725,
+    4.725
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_oak",
+   "pos": [
+    18.207,
+    0.822,
+    18.296
+   ],
+   "rot": [
+    4.931,
+    53.402,
+    1.157
+   ],
+   "scale": [
+    3.542,
+    3.542,
+    3.542
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeB",
+   "pos": [
+    28.581,
+    5.652,
+    -34.388
+   ],
+   "rot": [
+    1.584,
+    -114.684,
+    0.285
+   ],
+   "scale": [
+    2.383,
+    2.383,
+    2.383
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_cone",
+   "pos": [
+    -42.337,
+    0.739,
+    -7.63
+   ],
+   "rot": [
+    -3.994,
+    11.696,
+    3.78
+   ],
+   "scale": [
+    4.727,
+    4.727,
+    4.727
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineRoundA",
+   "pos": [
+    -30.61,
+    -1.255,
+    19.358
+   ],
+   "rot": [
+    4.291,
+    157.301,
+    3.025
+   ],
+   "scale": [
+    3.686,
+    3.686,
+    3.686
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default_dark",
+   "pos": [
+    42.356,
+    0.347,
+    2.562
+   ],
+   "rot": [
+    2.146,
+    113.181,
+    -0.106
+   ],
+   "scale": [
+    4.441,
+    4.441,
+    4.441
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/stone_largeC",
+   "pos": [
+    1.719,
+    0.396,
+    -39.832
+   ],
+   "rot": [
+    -3.384,
+    -167.656,
+    4.224
+   ],
+   "scale": [
+    3.186,
+    3.186,
+    3.186
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineTallB",
+   "pos": [
+    24.866,
+    1.454,
+    -9.207
+   ],
+   "rot": [
+    5.289,
+    -78.904,
+    -4.129
+   ],
+   "scale": [
+    3.574,
+    3.574,
+    3.574
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_detailed",
+   "pos": [
+    -7.412,
+    1.278,
+    -24.875
+   ],
+   "rot": [
+    -4.49,
+    74.746,
+    2.766
+   ],
+   "scale": [
+    4.31,
+    4.31,
+    4.31
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineTallB",
+   "pos": [
+    33.79,
+    1.852,
+    17.223
+   ],
+   "rot": [
+    -2.397,
+    -32.726,
+    4.97
+   ],
+   "scale": [
+    3.376,
+    3.376,
+    3.376
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/stone_largeC",
+   "pos": [
+    -1.576,
+    1.458,
+    36.432
+   ],
+   "rot": [
+    5.248,
+    27.3,
+    -0.463
+   ],
+   "scale": [
+    3.01,
+    3.01,
+    3.01
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_detailed",
+   "pos": [
+    -33.77,
+    1.17,
+    -33.475
+   ],
+   "rot": [
+    0.69,
+    -79.29,
+    4.013
+   ],
+   "scale": [
+    3.861,
+    3.861,
+    3.861
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_cone",
+   "pos": [
+    30.431,
+    1.211,
+    34.554
+   ],
+   "rot": [
+    -2.827,
+    142.456,
+    3.406
+   ],
+   "scale": [
+    3.282,
+    3.282,
+    3.282
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default_dark",
+   "pos": [
+    -26.729,
+    0.228,
+    44.773
+   ],
+   "rot": [
+    -4.711,
+    -85.882,
+    -3.234
+   ],
+   "scale": [
+    4.189,
+    4.189,
+    4.189
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/stone_largeC",
+   "pos": [
+    -32.126,
+    0.2,
+    -44.947
+   ],
+   "rot": [
+    -2.783,
+    -165.912,
+    -1.298
+   ],
+   "scale": [
+    2.352,
+    2.352,
+    2.352
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default",
+   "pos": [
+    8.419,
+    0.33,
+    -43.23
+   ],
+   "rot": [
+    4.753,
+    -51.666,
+    -2.351
+   ],
+   "scale": [
+    4.463,
+    4.463,
+    4.463
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_cone",
+   "pos": [
+    -42.16,
+    0.047,
+    32.052
+   ],
+   "rot": [
+    5.755,
+    -121.067,
+    -2.392
+   ],
+   "scale": [
+    3.877,
+    3.877,
+    3.877
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_cone",
+   "pos": [
+    6.562,
+    1.114,
+    37.038
+   ],
+   "rot": [
+    3.973,
+    140.845,
+    3.291
+   ],
+   "scale": [
+    4.774,
+    4.774,
+    4.774
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeD",
+   "pos": [
+    23.496,
+    1.27,
+    18.346
+   ],
+   "rot": [
+    -0.706,
+    -153.183,
+    -3.805
+   ],
+   "scale": [
+    2.123,
+    2.123,
+    2.123
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_cone",
+   "pos": [
+    32.116,
+    0.935,
+    -0.889
+   ],
+   "rot": [
+    4.248,
+    -160.186,
+    -5.926
+   ],
+   "scale": [
+    4.986,
+    4.986,
+    4.986
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineRoundA",
+   "pos": [
+    -42.864,
+    0.443,
+    -43.084
+   ],
+   "rot": [
+    1.804,
+    41.064,
+    -1.902
+   ],
+   "scale": [
+    4.283,
+    4.283,
+    4.283
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default_dark",
+   "pos": [
+    17.589,
+    0.389,
+    -44.645
+   ],
+   "rot": [
+    -4.161,
+    -161.244,
+    2.536
+   ],
+   "scale": [
+    4.432,
+    4.432,
+    4.432
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeB",
+   "pos": [
+    34.742,
+    1.204,
+    -5.101
+   ],
+   "rot": [
+    3.488,
+    -73.385,
+    5.195
+   ],
+   "scale": [
+    2.962,
+    2.962,
+    2.962
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_oak_fall",
+   "pos": [
+    -38.855,
+    0.269,
+    -28.23
+   ],
+   "rot": [
+    -3.978,
+    -40.134,
+    3.795
+   ],
+   "scale": [
+    4.605,
+    4.605,
+    4.605
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_detailed",
+   "pos": [
+    21.051,
+    1.005,
+    37.649
+   ],
+   "rot": [
+    3.578,
+    49.79,
+    4.015
+   ],
+   "scale": [
+    4.75,
+    4.75,
+    4.75
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_detailed",
+   "pos": [
+    -25.538,
+    1.389,
+    -17.027
+   ],
+   "rot": [
+    -5.046,
+    -114.634,
+    5.853
+   ],
+   "scale": [
+    3.366,
+    3.366,
+    3.366
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_tallB",
+   "pos": [
+    -6.731,
+    1.339,
+    -31.596
+   ],
+   "rot": [
+    -5.105,
+    -42.597,
+    1.537
+   ],
+   "scale": [
+    2.377,
+    2.377,
+    2.377
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineTallB",
+   "pos": [
+    11.192,
+    1.922,
+    -35.357
+   ],
+   "rot": [
+    -5.829,
+    -26.474,
+    -0.23
+   ],
+   "scale": [
+    4.785,
+    4.785,
+    4.785
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineRoundA",
+   "pos": [
+    -36.277,
+    1.08,
+    -17.341
+   ],
+   "rot": [
+    3.831,
+    176.232,
+    4.303
+   ],
+   "scale": [
+    3.341,
+    3.341,
+    3.341
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineTallB",
+   "pos": [
+    -31.935,
+    1.606,
+    -11.655
+   ],
+   "rot": [
+    0.482,
+    -79.581,
+    1.555
+   ],
+   "scale": [
+    4.574,
+    4.574,
+    4.574
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeB",
+   "pos": [
+    10.025,
+    0.885,
+    27.687
+   ],
+   "rot": [
+    -2.42,
+    -138.062,
+    4.215
+   ],
+   "scale": [
+    2.53,
+    2.53,
+    2.53
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_fat",
+   "pos": [
+    31.732,
+    5.423,
+    -21.994
+   ],
+   "rot": [
+    -4.692,
+    153.164,
+    1.807
+   ],
+   "scale": [
+    3.293,
+    3.293,
+    3.293
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineRoundA",
+   "pos": [
+    20.942,
+    4.469,
+    -26.11
+   ],
+   "rot": [
+    -4.625,
+    -50.922,
+    5.547
+   ],
+   "scale": [
+    4.409,
+    4.409,
+    4.409
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    -28.102,
+    0.741,
+    -42.216
+   ],
+   "rot": [
+    0.0,
+    -113.47,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_yellowB",
+   "pos": [
+    17.413,
+    0.29,
+    -7.902
+   ],
+   "rot": [
+    0.0,
+    166.094,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    -43.323,
+    0.684,
+    1.961
+   ],
+   "rot": [
+    0.0,
+    143.85,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    -9.34,
+    1.108,
+    -37.574
+   ],
+   "rot": [
+    0.0,
+    -106.754,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_yellowB",
+   "pos": [
+    -16.915,
+    0.991,
+    -17.633
+   ],
+   "rot": [
+    0.0,
+    -36.534,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    20.273,
+    1.131,
+    23.139
+   ],
+   "rot": [
+    0.0,
+    -10.671,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    21.948,
+    1.071,
+    25.517
+   ],
+   "rot": [
+    0.0,
+    21.658,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    8.456,
+    1.661,
+    -33.499
+   ],
+   "rot": [
+    0.0,
+    -147.034,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_yellowB",
+   "pos": [
+    32.195,
+    4.502,
+    -36.505
+   ],
+   "rot": [
+    0.0,
+    69.411,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    29.223,
+    1.904,
+    24.455
+   ],
+   "rot": [
+    0.0,
+    131.953,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    -39.422,
+    -0.223,
+    27.162
+   ],
+   "rot": [
+    0.0,
+    80.478,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    40.767,
+    0.838,
+    7.12
+   ],
+   "rot": [
+    0.0,
+    -124.167,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_yellowB",
+   "pos": [
+    -2.345,
+    0.0,
+    7.48
+   ],
+   "rot": [
+    0.0,
+    137.866,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    -37.194,
+    0.622,
+    41.965
+   ],
+   "rot": [
+    0.0,
+    -58.993,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_yellowB",
+   "pos": [
+    28.519,
+    6.529,
+    -26.246
+   ],
+   "rot": [
+    0.0,
+    78.721,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    -31.464,
+    -0.341,
+    16.802
+   ],
+   "rot": [
+    0.0,
+    -20.824,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    -37.761,
+    0.058,
+    18.061
+   ],
+   "rot": [
+    0.0,
+    19.067,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    -9.098,
+    1.412,
+    37.998
+   ],
+   "rot": [
+    0.0,
+    52.827,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    -5.801,
+    1.299,
+    40.257
+   ],
+   "rot": [
+    0.0,
+    164.995,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    33.667,
+    0.869,
+    3.953
+   ],
+   "rot": [
+    0.0,
+    -116.078,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    12.056,
+    0.337,
+    -15.01
+   ],
+   "rot": [
+    0.0,
+    71.795,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    43.68,
+    0.468,
+    6.479
+   ],
+   "rot": [
+    0.0,
+    83.636,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    -11.1,
+    0.487,
+    28.287
+   ],
+   "rot": [
+    0.0,
+    -31.589,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_yellowB",
+   "pos": [
+    -20.955,
+    1.579,
+    -34.903
+   ],
+   "rot": [
+    0.0,
+    -146.576,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  }
+ ],
+ "pads": [
+  {
+   "pos": [
+    -42.0,
+    0.0,
+    -42.0
+   ]
+  },
+  {
+   "pos": [
+    42.0,
+    0.0,
+    42.0
+   ]
+  }
+ ],
+ "podium": {
+  "pos": [
+   0.0,
+   0.0,
+   -3.0
+  ],
+  "yaw": 0.0
+ },
+ "spawns": [
+  {
+   "pos": [
+    0.0,
+    0.0,
+    13.0
+   ],
+   "yaw": 0.0
+  },
+  {
+   "pos": [
+    7.641,
+    0.0,
+    10.517
+   ],
+   "yaw": 36.0
+  },
+  {
+   "pos": [
+    12.364,
+    0.0,
+    4.017
+   ],
+   "yaw": 72.0
+  },
+  {
+   "pos": [
+    12.364,
+    0.0,
+    -4.017
+   ],
+   "yaw": 108.0
+  },
+  {
+   "pos": [
+    7.641,
+    0.0,
+    -10.517
+   ],
+   "yaw": 144.0
+  },
+  {
+   "pos": [
+    0.0,
+    0.0,
+    -13.0
+   ],
+   "yaw": -180.0
+  },
+  {
+   "pos": [
+    -7.641,
+    0.0,
+    -10.517
+   ],
+   "yaw": -144.0
+  },
+  {
+   "pos": [
+    -12.364,
+    0.0,
+    -4.017
+   ],
+   "yaw": -108.0
+  },
+  {
+   "pos": [
+    -12.364,
+    0.0,
+    4.017
+   ],
+   "yaw": -72.0
+  },
+  {
+   "pos": [
+    -7.641,
+    0.0,
+    10.517
+   ],
+   "yaw": -36.0
+  }
+ ]
+}

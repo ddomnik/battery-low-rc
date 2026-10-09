@@ -76,6 +76,24 @@ func register_main(main: Main) -> void:
 	_main = main
 	state = State.MENU
 
+const MAIN_SCENE := "res://main/main.tscn"
+
+var _pending_match: MatchConfig = null
+
+## Start this match as soon as Main exists (the map editor's F6 test switches to the main scene first).
+func queue_match(config: MatchConfig) -> void:
+	_pending_match = config
+
+## Called by Main: starts a queued match instead of showing the menu. Returns false if none was queued.
+func start_pending_match() -> bool:
+	if _pending_match == null:
+		return false
+	var config := _pending_match
+	_pending_match = null
+	print("Game: test match on map '%s'" % config.map_id)
+	start_match(config)
+	return true
+
 func start_match(config: MatchConfig) -> void:
 	if _main == null:
 		push_error("Game.start_match: no Main registered")
@@ -103,7 +121,7 @@ func quit_app() -> void:
 	get_tree().quit()
 
 ## Headless smoke tests: `-- --autostart --bots=N --camera=follow|fixed --round=SECONDS
-## --mode=timed|table|lives|bomb --lives=N --bomb=SECONDS`.
+## --mode=timed|table|lives|bomb --lives=N --bomb=SECONDS --map=MAP_ID`.
 func _handle_cmdline() -> void:
 	var autostart := false
 	var config := MatchConfig.from_settings()
@@ -126,6 +144,12 @@ func _handle_cmdline() -> void:
 				config.game_mode = i as GameMode.Kind
 			else:
 				push_warning("Game: unknown --mode (use %s)" % "|".join(GameMode.CLI_NAMES))
+		elif arg.begins_with("--map="):
+			var id := arg.get_slice("=", 1)
+			if MapCatalog.load_map(id) != null:
+				config.map_id = id
+			else:
+				push_warning("Game: unknown --map '%s'" % id)
 		elif arg.begins_with("--lives="):
 			config.lives = clampi(arg.get_slice("=", 1).to_int(), 1, 9)
 		elif arg.begins_with("--bomb="):

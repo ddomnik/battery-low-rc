@@ -1,0 +1,291 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://map/authoring/map_source.gd" id="1_sesna"]
+[ext_resource type="Script" path="res://map/authoring/map_shape.gd" id="2_d6634"]
+[ext_resource type="Script" path="res://map/authoring/map_spawn.gd" id="3_o0bps"]
+[ext_resource type="Script" path="res://map/authoring/map_item.gd" id="4_sbpxc"]
+[ext_resource type="Script" path="res://map/authoring/map_pad.gd" id="5_27ohk"]
+[ext_resource type="Script" path="res://map/authoring/map_podium.gd" id="6_48hg1"]
+
+[node name="MapSource" type="Node3D" unique_id=1129365844]
+script = ExtResource("1_sesna")
+map_name = "Test Arena"
+author = "Battery Low!"
+floor_color = Color(0.75, 0.72, 0.66, 1)
+
+[node name="Walls" type="Node3D" parent="." unique_id=1356507228]
+
+[node name="Wall" type="Node3D" parent="Walls" unique_id=112325139 groups=["map_border"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -45.5)
+script = ExtResource("2_d6634")
+size = Vector3(92, 1.5, 1)
+color = Color(0.41568628, 0.29803923, 0.5764706, 1)
+
+[node name="Wall2" type="Node3D" parent="Walls" unique_id=150178271 groups=["map_border"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45.5, 0.75, 0)
+script = ExtResource("2_d6634")
+size = Vector3(1, 1.5, 92)
+color = Color(0.41568628, 0.29803923, 0.5764706, 1)
+
+[node name="Wall3" type="Node3D" parent="Walls" unique_id=1219126706 groups=["map_border"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -45.5, 0.75, 0)
+script = ExtResource("2_d6634")
+size = Vector3(1, 1.5, 92)
+color = Color(0.41568628, 0.29803923, 0.5764706, 1)
+
+[node name="Wall4" type="Node3D" parent="Walls" unique_id=358104742 groups=["map_border"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 45.5)
+script = ExtResource("2_d6634")
+size = Vector3(92, 0.6, 1)
+color = Color(0.41568628, 0.29803923, 0.5764706, 1)
+
+[node name="Shapes" type="Node3D" parent="." unique_id=84416223]
+
+[node name="Node3D" type="Node3D" parent="Shapes" unique_id=1884315504]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -12)
+script = ExtResource("2_d6634")
+size = Vector3(20, 3, 12)
+color = Color(0.09803922, 0.50980395, 0.76862746, 1)
+
+[node name="Node3D2" type="Node3D" parent="Shapes" unique_id=1474428794]
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(6, 3, 12)
+color = Color(1, 0.7921569, 0.22745098, 1)
+
+[node name="Node3D3" type="Node3D" parent="Shapes" unique_id=1180109329]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 13.2, 0, -12)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(6, 3, 6.4)
+
+[node name="Node3D4" type="Node3D" parent="Shapes" unique_id=1901085944]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -12.15, 0, -12)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(6, 3, 4.3)
+color = Color(1, 0.34901962, 0.36862746, 1)
+
+[node name="Node3D5" type="Node3D" parent="Shapes" unique_id=302935738]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, 20)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(5, 1.2, 4)
+color = Color(1, 0.34901962, 0.36862746, 1)
+
+[node name="Node3D6" type="Node3D" parent="Shapes" unique_id=1452466909]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, 18)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(6, 1, 4)
+color = Color(0.5411765, 0.7882353, 0.14901961, 1)
+
+[node name="Node3D7" type="Node3D" parent="Shapes" unique_id=1688615508]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 38, 0, 14)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(6, 1, 4)
+color = Color(0.5411765, 0.7882353, 0.14901961, 1)
+
+[node name="Node3D8" type="Node3D" parent="Shapes" unique_id=1816876193]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, 8)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(6, 1, 4)
+color = Color(0.5411765, 0.7882353, 0.14901961, 1)
+
+[node name="Node3D9" type="Node3D" parent="Shapes" unique_id=1327547953]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 38, 0, 4)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(6, 1, 4)
+color = Color(0.5411765, 0.7882353, 0.14901961, 1)
+
+[node name="Node3D10" type="Node3D" parent="Shapes" unique_id=1687671652]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, -2)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(6, 1, 4)
+color = Color(0.5411765, 0.7882353, 0.14901961, 1)
+
+[node name="Node3D11" type="Node3D" parent="Shapes" unique_id=1344871816]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 38, 0, -6)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(6, 1, 4)
+color = Color(0.5411765, 0.7882353, 0.14901961, 1)
+
+[node name="Node3D12" type="Node3D" parent="Shapes" unique_id=1354744592]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 0, -12)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(6, 1, 4)
+color = Color(0.5411765, 0.7882353, 0.14901961, 1)
+
+[node name="Node3D13" type="Node3D" parent="Shapes" unique_id=1171279650]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 38, 0, -16)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(6, 1, 4)
+color = Color(0.5411765, 0.7882353, 0.14901961, 1)
+
+[node name="Node3D14" type="Node3D" parent="Shapes" unique_id=610616341]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 28, 0, -32)
+script = ExtResource("2_d6634")
+kind = 1
+size = Vector3(12, 2.5, 12)
+color = Color(0.29803923, 0.7882353, 0.9411765, 1)
+
+[node name="Node3D15" type="Node3D" parent="Shapes" unique_id=62017339]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -15, 1, 5)
+script = ExtResource("2_d6634")
+size = Vector3(2, 2, 2)
+
+[node name="Node3D16" type="Node3D" parent="Shapes" unique_id=852302440]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 1, 8)
+script = ExtResource("2_d6634")
+size = Vector3(2, 2, 2)
+
+[node name="Node3D17" type="Node3D" parent="Shapes" unique_id=1598254074]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -36, 1, 0)
+script = ExtResource("2_d6634")
+size = Vector3(2, 2, 2)
+
+[node name="Node3D18" type="Node3D" parent="Shapes" unique_id=150370638]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1, 25)
+script = ExtResource("2_d6634")
+size = Vector3(2, 2, 2)
+
+[node name="Node3D19" type="Node3D" parent="Shapes" unique_id=1386370080]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 1, 32)
+script = ExtResource("2_d6634")
+size = Vector3(2, 2, 2)
+
+[node name="Node3D20" type="Node3D" parent="Shapes" unique_id=1342558372]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 30, 1, -14)
+script = ExtResource("2_d6634")
+size = Vector3(2, 2, 2)
+
+[node name="Node3D21" type="Node3D" parent="Shapes" unique_id=145976282]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -38, 1, 25)
+script = ExtResource("2_d6634")
+size = Vector3(2, 2, 2)
+
+[node name="Node3D22" type="Node3D" parent="Shapes" unique_id=1818291242]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 1, -30)
+script = ExtResource("2_d6634")
+size = Vector3(2, 2, 2)
+
+[node name="Node3D23" type="Node3D" parent="Shapes" unique_id=53118654]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 3, 38)
+script = ExtResource("2_d6634")
+size = Vector3(2, 6, 2)
+color = Color(0.41568628, 0.29803923, 0.5764706, 1)
+
+[node name="Node3D24" type="Node3D" parent="Shapes" unique_id=313268728]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 3, 38)
+script = ExtResource("2_d6634")
+size = Vector3(2, 6, 2)
+color = Color(0.41568628, 0.29803923, 0.5764706, 1)
+
+[node name="Props" type="Node3D" parent="." unique_id=1813764541]
+
+[node name="Paths" type="Node3D" parent="." unique_id=1687576841]
+
+[node name="Spawns" type="Node3D" parent="." unique_id=628053407]
+
+[node name="Spawn" type="Marker3D" parent="Spawns" unique_id=556933353]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 32)
+script = ExtResource("3_o0bps")
+
+[node name="Spawn2" type="Marker3D" parent="Spawns" unique_id=929800543]
+transform = Transform3D(0.809017, 0, 0.58778524, 0, 1, 0, -0.58778524, 0, 0.809017, 18.8091, 0, 25.8885)
+script = ExtResource("3_o0bps")
+
+[node name="Spawn3" type="Marker3D" parent="Spawns" unique_id=1337004813]
+transform = Transform3D(0.30901697, 0, 0.95105654, 0, 1, 0, -0.95105654, 0, 0.30901697, 30.4338, 0, 9.8885)
+script = ExtResource("3_o0bps")
+
+[node name="Spawn4" type="Marker3D" parent="Spawns" unique_id=1089429273]
+transform = Transform3D(-0.30901703, 0, 0.9510565, 0, 1, 0, -0.9510565, 0, -0.30901703, 30.4338, 0, -9.8885)
+script = ExtResource("3_o0bps")
+
+[node name="Spawn5" type="Marker3D" parent="Spawns" unique_id=2127853276]
+transform = Transform3D(-0.80901706, 0, 0.5877852, 0, 1, 0, -0.5877852, 0, -0.80901706, 18.8091, 0, -25.8885)
+script = ExtResource("3_o0bps")
+
+[node name="Spawn6" type="Marker3D" parent="Spawns" unique_id=1223538238]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, -32)
+script = ExtResource("3_o0bps")
+
+[node name="Spawn7" type="Marker3D" parent="Spawns" unique_id=1509923030]
+transform = Transform3D(-0.80901694, 0, -0.58778536, 0, 1, 0, 0.58778536, 0, -0.80901694, -18.8091, 0, -25.8885)
+script = ExtResource("3_o0bps")
+
+[node name="Spawn8" type="Marker3D" parent="Spawns" unique_id=1687913660]
+transform = Transform3D(-0.3090171, 0, -0.9510565, 0, 1, 0, 0.9510565, 0, -0.3090171, -30.4338, 0, -9.8885)
+script = ExtResource("3_o0bps")
+
+[node name="Spawn9" type="Marker3D" parent="Spawns" unique_id=496011426]
+transform = Transform3D(0.30901712, 0, -0.9510565, 0, 1, 0, 0.9510565, 0, 0.30901712, -30.4338, 0, 9.8885)
+script = ExtResource("3_o0bps")
+
+[node name="Spawn10" type="Marker3D" parent="Spawns" unique_id=1337047825]
+transform = Transform3D(0.80901694, 0, -0.5877853, 0, 1, 0, 0.5877853, 0, 0.80901694, -18.8091, 0, 25.8885)
+script = ExtResource("3_o0bps")
+
+[node name="Items" type="Node3D" parent="." unique_id=108285735]
+
+[node name="Item" type="Marker3D" parent="Items" unique_id=887743254]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 24)
+script = ExtResource("4_sbpxc")
+
+[node name="Item2" type="Marker3D" parent="Items" unique_id=420612083]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.9706, 0, 16.9706)
+script = ExtResource("4_sbpxc")
+
+[node name="Item3" type="Marker3D" parent="Items" unique_id=677252560]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 0)
+script = ExtResource("4_sbpxc")
+
+[node name="Item4" type="Marker3D" parent="Items" unique_id=1043676886]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.9706, 0, -16.9706)
+script = ExtResource("4_sbpxc")
+
+[node name="Item5" type="Marker3D" parent="Items" unique_id=214627365]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -24)
+script = ExtResource("4_sbpxc")
+
+[node name="Item6" type="Marker3D" parent="Items" unique_id=951257990]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.9706, 0, -16.9706)
+script = ExtResource("4_sbpxc")
+
+[node name="Item7" type="Marker3D" parent="Items" unique_id=1473863669]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -24, 0, 0)
+script = ExtResource("4_sbpxc")
+
+[node name="Item8" type="Marker3D" parent="Items" unique_id=261361423]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.9706, 0, 16.9706)
+script = ExtResource("4_sbpxc")
+
+[node name="Item9" type="Marker3D" parent="Items" unique_id=742699586]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, -12)
+script = ExtResource("4_sbpxc")
+
+[node name="Item10" type="Marker3D" parent="Items" unique_id=1797302308]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, 8)
+script = ExtResource("4_sbpxc")
+
+[node name="Pads" type="Node3D" parent="." unique_id=688533114]
+
+[node name="Pad" type="Marker3D" parent="Pads" unique_id=1235635376]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -36, 0, -36)
+script = ExtResource("5_27ohk")
+
+[node name="Pad2" type="Marker3D" parent="Pads" unique_id=612581200]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 36, 0, 36)
+script = ExtResource("5_27ohk")
+
+[node name="Podium" type="Marker3D" parent="." unique_id=1588152855]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 13)
+script = ExtResource("6_48hg1")

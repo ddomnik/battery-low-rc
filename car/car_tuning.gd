@@ -99,6 +99,11 @@ extends Resource
 @export var oil_yaw_response_mult: float = 0.3   # how firmly the yaw rate is held on oil (low: keeps spinning after a turn)
 @export var glue_speed_mult: float = 0.3         # top speed and acceleration with all four wheels glued
 @export var glue_drag: float = 12.0              # extra deceleration (m/s²) above the glued top speed (all wheels)
+@export_subgroup("Fluids")
+@export var fluid_current_push: float = 1.5      # m/s² of push per m/s of a fluid's current (while touching)
+@export var fluid_swim_min: float = 0.5          # body this far under (0..1) with wheels off the ground: paddle
+@export var fluid_swim_accel: float = 0.35       # paddling: share of the normal acceleration
+@export var fluid_angular_drag: float = 0.6      # share of a fluid's drag that also slows spinning
 
 @export_group("Wall crash")
 @export var wall_bounce_min_speed: float = 4.0   # impact speed (into the wall) needed for a kickback

@@ -15,6 +15,7 @@ var music_volume: float = 0.8           # 0..1, linear
 var sfx_volume: float = 1.0             # 0..1, linear; effects and engines
 var show_name_labels: bool = true
 var game_mode: GameMode.Kind = GameMode.Kind.TIMED
+var map_id: String = MapCatalog.DEFAULT_ID
 var round_time: float = 180.0
 var lives: int = 3
 var bomb_time: float = 20.0
@@ -40,6 +41,8 @@ func load_settings() -> void:
 	show_name_labels = bool(cfg.get_value(HUD, "show_name_labels", show_name_labels))
 	var gm: int = cfg.get_value(SECTION, "game_mode", game_mode)
 	game_mode = clampi(gm, 0, GameMode.Kind.size() - 1) as GameMode.Kind
+	var mid := str(cfg.get_value(SECTION, "map", map_id))
+	map_id = mid if MapCatalog.valid_id(mid) else MapCatalog.DEFAULT_ID
 	round_time = clampf(float(cfg.get_value(SECTION, "round_time", round_time)), 30.0, 900.0)
 	lives = clampi(int(cfg.get_value(SECTION, "lives", lives)), 1, 9)
 	bomb_time = clampf(float(cfg.get_value(SECTION, "bomb_time", bomb_time)), 5.0, 120.0)
@@ -56,6 +59,7 @@ func save_settings() -> void:
 	cfg.set_value(AUDIO, "sfx_volume", sfx_volume)
 	cfg.set_value(HUD, "show_name_labels", show_name_labels)
 	cfg.set_value(SECTION, "game_mode", game_mode)
+	cfg.set_value(SECTION, "map", map_id)
 	cfg.set_value(SECTION, "round_time", round_time)
 	cfg.set_value(SECTION, "lives", lives)
 	cfg.set_value(SECTION, "bomb_time", bomb_time)

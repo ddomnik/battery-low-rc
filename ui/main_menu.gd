@@ -31,6 +31,22 @@ func _ready() -> void:
 	_bomb_row = _spin_row(box, "Bomb (s)", Settings.bomb_time, 5.0, 120.0, 5.0, func(v: float) -> void: Settings.bomb_time = v)
 	_update_mode_rows()
 
+	var maps := MapCatalog.list()
+	var map_option := OptionButton.new()
+	for m in maps:
+		map_option.add_item(m["name"])
+		map_option.set_item_metadata(map_option.item_count - 1, m["id"])
+		if m["id"] == Settings.map_id:
+			map_option.select(map_option.item_count - 1)
+	if map_option.selected < 0 and map_option.item_count > 0:
+		map_option.select(0)
+		Settings.map_id = map_option.get_item_metadata(0)
+	_style_field(map_option)
+	map_option.item_selected.connect(func(index: int) -> void:
+		Settings.map_id = map_option.get_item_metadata(index)
+		Settings.save_settings())
+	UiKit.row(box, "Map").add_child(map_option)
+
 	_spin_row(box, "Bots", Settings.bot_count, 0.0, MatchConfig.MAX_BOTS, 1.0, func(v: float) -> void: Settings.bot_count = int(v))
 
 	var camera := OptionButton.new()

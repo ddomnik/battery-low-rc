@@ -58,8 +58,19 @@ Decided by the developer during playtests. Where these conflict with later secti
 - Podium extras: colorful confetti behind the podium, 2nd and 3rd rock side to side (visual only), the camera sways slowly (±9°).
 - Eliminated cars are hidden, frozen and without collisions; the local player then spectates (Tab / click = next car). Everyone returns for the podium ceremony; the ranking uses the elimination order (out last = better).
 
+**Maps (data-only, safe to share later)**
+- A map is a folder `maps/<id>/` with `map.json` (format 1, documented at the top of `map/map_loader.gd`): floor size / material, outer walls, light, objects (`box`, `wedge`, `cylinder` with any rotation; `prop` = catalog model with rotation / scale / collision `convex|box|none`; `path` = smooth curve through points swept as a `road` slab or a `wall`), spawns (2–16), item spots, charging pads, podium spot.
+- Safety: the game only ever reads map data — never scenes, resources or scripts from a map. `MapLoader` accepts only known object types, clamps every number, limits counts and file size, and models are catalog ids (`PropCatalog`: every .glb in `assets/kenney_nature_kit/` as `nature/<name>`), never file paths. Map ids are folder names restricted to `[a-z0-9_-]`. `tests/maps_probe` feeds hostile input.
+- The main menu has a Map choice (persisted as `Settings.map_id`); command line `--map=<id>`. Built-in maps: Test Arena (the original blockout, unchanged geometry) and Meadow (trees, rocks, a curved road over a hill, a curved wall).
+- Map editor (milestone 2, guide: `docs/MAP_MAKING.md`): a map's editable scene is `maps/<id>/source.tscn` with a `MapSource` root (floor / walls / light settings, live preview, **Export map** button → `map.json`; F6 exports and starts a test match via `Game.queue_match`). Children: dragged-in catalog `.glb` models (props; groups `map_no_collision` / `map_box_collision` override the default collision, small plants are drive-through), `MapShape`, `MapPath` (curve sampled every 2 m on export), and the markers. Hidden nodes are not exported; plain Node3D folders are walked. `MapSourceIO.build_from_map` turns a map back into a source scene (used for the built-in maps; the probe checks the round trip).
+- Own models (milestone 3; chosen over Terrain3D: Blender terrain allows tunnels / overhangs and needs far less runtime code): `maps/<id>/models/<name>.glb`, referenced as `"map/<name>"`, default collision `"mesh"` (exact `ConcavePolygonShape3D`). `MapModels` reads them as raw glTF (`GLTFDocument.append_from_buffer`, never `ResourceLoader`): `.glb` only, no external buffer / image URIs, ≤ 20 MB, ≤ 300k triangles, textures ≤ 4096 px, ≤ 32 own models per map, only meshes kept (lights, cameras, animations dropped). Mesh nodes ending in `-col` / `-colonly` (or `_col…`) are collision-only and hidden. Vertex colors are switched on (glTF rule; `map/authoring/vertex_color_import.gd` does the same for the editor import). Floor material `"none"` (terrain is the ground); `Arena.lowest_y` lowers the particle heightfield and each car's `kill_y` (= lowest point + `CarTuning.kill_y`). Exported game: built-in maps fall back to the imported `res://` model (trusted). Example map: Hills (100 × 100 m generated terrain with valley and hills, trees on the slopes).
+- No automatic outer walls: maps build their own; objects with `"border": true` (editor group `map_border`) are left out when `GameMode.arena_has_walls()` is false (Last on table). The built-in maps keep their old walls as four border boxes.
+- Fluids (`"type": "fluid"`, editor `MapFluid`, runtime `arena/fluid_zone.gd`, presets `map/fluid_presets.gd`: water / lava / mud / acid): level box, node at the surface center, depth down, no collision. `Car._update_fluid` each tick: contact = share of wheels touching (1 once the body is in), submersion of the body; buoyancy (× gravity × submersion), drag, current (tyre grip and the parking brake work relative to the flow, so cars drift with it), paddling when floating, slow and grip multipliers while touching, wet tyres (`wheel_wet`, `TireTrail.WET_KIND`), deadly fluids emit `respawn_requested`. `Match._apply_fluid_damage` (damage per 100 ms) → `GameMode.on_hazard_damage`: default drains battery (0.01 per point) and credits the last attacker via `register_hit`; Last on table adds 0.5 % per point; Deathmatch pops a balloon per 10 points. Entry splash `&"fluid_splash"`. Bots look ahead (5 m + 0.35 m per m/s) and turn away from harmful fluids, drive straight out if inside, skip boxes and wander points in them. Own textures: `maps/<id>/textures/<name>.png` (`"map/<name>"`, raw PNG ≤ 8 MB / 4096 px). Fluid surfaces render on layer `Layers.RENDER_FX` (no blob shadows, decals or particle landing). `tests/fluids_probe`.
+- Later: lobby transfer of maps (folder incl. models and textures) to `user://maps/`, through the same loaders.
+- Exporting the game will need `*.json` in the export preset's include filter (map files are not resources).
+
 **Podium ceremony (RESULTS)**
-- When the round ends, a three-step podium (`match/podium.gd`) appears at (0, 0, 13): the top three of the ranking stand on it facing the camera, the winner hops every second; everyone else lies on their roof in a row in front. The camera glides to it (north-up, closer); the HUD hides and the results list sits in a panel on the right.
+- When the round ends, a three-step podium (`match/podium.gd`) appears at the map's podium spot (test arena: (0, 0, 13)): the top three of the ranking stand on it facing the camera, the winner hops every second; everyone else lies on their roof in a row in front. The camera glides to it (north-up, closer); the HUD hides and the results list sits in a panel on the right.
 - Frozen cars neither auto-flip nor earn landing rewards; projectiles in flight are removed and item boxes stop pulling / handing out items.
 
 **Settings menu**
@@ -289,10 +300,20 @@ res://
 │   ├── effects.gd                  play_effect implementations
 │   └── debug_draw.gd
 ├── arena/
-│   ├── arena_builder.gd            static helpers: box, wedge, materials
-│   ├── test_arena.tscn / test_arena.gd
+│   ├── arena_builder.gd            static helpers: box, wedge, cylinder, materials
+│   ├── arena.gd                    builds the play area from a MapData
 │   ├── charging_pad.gd
 │   └── shaders/checker.gdshader
+├── map/                            map system (see §0 "Maps")
+│   ├── map_data.gd                 validated map content (plain data)
+│   ├── map_loader.gd               JSON → MapData, validation and limits
+│   ├── map_catalog.gd              lists / loads maps in res://maps/
+│   ├── prop_catalog.gd             whitelisted models ("nature/tree_oak" → res:// file)
+│   ├── map_models.gd               a map's own .glb models: safe glTF loading, limits, collision-only meshes
+│   └── authoring/                  editor tools (@tool): MapSource (root + Export map), MapShape, MapPath,
+│                                   MapSpawn / MapItem / MapPad / MapPodium, MapSourceIO (scene ↔ map data)
+├── maps/<id>/map.json, source.tscn built-in maps (test_arena, meadow, hills): exported data + editable scene
+│   └── models/*.glb                a map's own models (hills: terrain.glb)
 ├── car/
 │   ├── car.tscn / car.gd
 │   ├── car_tuning.gd

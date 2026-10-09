@@ -15,6 +15,10 @@ const REACHABLE_HEIGHT := 1.5        # skip item boxes this far above / below th
 const ARRIVE_DISTANCE := 3.0         # wander points count as reached within this distance
 const WANDER_EXTENT := 35.0          # random wander points within ±this on X and Z
 const BOMB_FLEE_RANGE := 15.0        # sticky bomb: run from the holder when it is this close
+const HAZARD_LOOKAHEAD := 5.0        # m ahead checked for harmful fluids (lava, acid, deadly) …
+const HAZARD_LOOKAHEAD_PER_SPEED := 0.35   # … plus this many m per m/s of speed …
+const HAZARD_LOOKAHEAD_TIME := 0.6   # … plus where the car will be in this many seconds
+const HAZARD_TURNS: Array[float] = [35.0, -35.0, 70.0, -70.0, 110.0, -110.0, 180.0]   # degrees to try instead
 
 @export var aim_error: float = 1.5   # random aim offset (m) per axis
 @export var reaction_delay_min: float = 0.3
@@ -59,6 +63,7 @@ func _physics_process(delta: float) -> void:
 	var i := CarInput.new()
 	i.drive_mode = CarInput.DriveMode.DIRECTIONAL
 	i.move_world = to_target.normalized() if to_target.length_squared() > 0.01 else Vector3.ZERO
+	i.move_world = _avoid_hazards(i.move_world)
 	var fwd := _flat(-car.global_basis.z).normalized()
 	var angle := rad_to_deg(fwd.angle_to(i.move_world)) if i.move_world != Vector3.ZERO else 180.0
 	i.boost = car.battery > BOOST_MIN_BATTERY and to_target.length() > BOOST_MIN_DISTANCE and angle < BOOST_MAX_ANGLE_DEG
@@ -66,6 +71,25 @@ func _physics_process(delta: float) -> void:
 	if _update_fire(delta):
 		_fire_latched = true
 	_current = i
+
+## Keeps the bot out of harmful fluids: if the way ahead leads into one, turn to the nearest safe direction.
+func _avoid_hazards(direction: Vector3) -> Vector3:
+	var inside := FluidZone.harmful_zone_at(car.global_position)
+	if inside != null:   # pushed in anyway: shortest way out
+		return inside.exit_direction(car.global_position)
+	if direction == Vector3.ZERO or not _heading_into_hazard(direction):
+		return direction
+	for turn in HAZARD_TURNS:
+		var d := direction.rotated(Vector3.UP, deg_to_rad(turn))
+		if not _heading_into_hazard(d):
+			return d
+	return direction
+
+func _heading_into_hazard(direction: Vector3) -> bool:
+	var here := car.global_position
+	var ahead := here + direction * (HAZARD_LOOKAHEAD + car.linear_velocity.length() * HAZARD_LOOKAHEAD_PER_SPEED)
+	var drift := here + _flat(car.linear_velocity) * HAZARD_LOOKAHEAD_TIME + direction * (HAZARD_LOOKAHEAD * 0.5)
+	return FluidZone.harmful_at(ahead) or FluidZone.harmful_at(drift)
 
 ## Called by the car once per tick; the fire pulse is consumed here.
 func get_car_input(_car: Car) -> CarInput:
@@ -91,7 +115,10 @@ func _think() -> void:
 			_wandering = false
 			return
 	if not _wandering or _flat(_target_point - car.global_position).length() < ARRIVE_DISTANCE:
-		_target_point = Vector3(rng.randf_range(-WANDER_EXTENT, WANDER_EXTENT), 0.0, rng.randf_range(-WANDER_EXTENT, WANDER_EXTENT))
+		for attempt in 4:   # not into lava and the like
+			_target_point = Vector3(rng.randf_range(-WANDER_EXTENT, WANDER_EXTENT), 0.0, rng.randf_range(-WANDER_EXTENT, WANDER_EXTENT))
+			if not FluidZone.harmful_at(_target_point):
+				break
 		_wandering = true
 
 ## True on the tick the bot fires: after a reaction delay once the held item has a target in range
@@ -132,7 +159,8 @@ func _nearest_box() -> ItemBox:
 	var best: ItemBox = null
 	var best_d := INF
 	for box in match_node.item_boxes:
-		if not box.active or absf(box.global_position.y - car.global_position.y) > REACHABLE_HEIGHT:
+		if not box.active or absf(box.global_position.y - car.global_position.y) > REACHABLE_HEIGHT \
+				or FluidZone.harmful_at(box.global_position):
 			continue
 		var d := car.global_position.distance_squared_to(box.global_position)
 		if d < best_d:

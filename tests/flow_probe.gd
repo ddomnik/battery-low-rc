@@ -84,7 +84,8 @@ func _run() -> void:
 	await _physics(300)   # 5 s of ceremony
 	var ranking := first.get_ranking()
 	var winner := ranking[0]
-	var on_top := absf(winner.global_position.x - Match.PODIUM_POSITION.x) < 1.4 		and absf(winner.global_position.z - Match.PODIUM_POSITION.z) < 1.6 and winner.global_position.y > 1.9
+	var podium_at := first.arena.podium_transform.origin   # the map's podium spot
+	var on_top := absf(winner.global_position.x - podium_at.x) < 1.4 		and absf(winner.global_position.z - podium_at.z) < 1.6 and winner.global_position.y > 1.9
 	_check("podium: winner still on the top step after 5 s of hopping", winner.global_position, on_top)
 	var flipped := 0
 	for c in ranking.slice(3):

@@ -11,15 +11,14 @@ signal effect_played(kind: StringName, pos: Vector3, param: float)
 ## COUNTDOWN: cars frozen, "3 · 2 · 1 · GO!". PLAYING: until the mode says the round is over. RESULTS: podium.
 enum State { COUNTDOWN, PLAYING, RESULTS }
 
-const ARENA_SCENE: PackedScene = preload("res://arena/test_arena.tscn")
 const CAR_SCENE: PackedScene = preload("res://car/car.tscn")
 const CAMERA_RIG_SCENE: PackedScene = preload("res://camera/camera_rig.tscn")
 const HUD_SCENE: PackedScene = preload("res://ui/hud.tscn")
 const INGAME_MENU_SCENE: PackedScene = preload("res://ui/ingame_menu.tscn")
 const RESULTS_SCENE: PackedScene = preload("res://ui/results.tscn")
 const COUNTDOWN_TIME := 3.0
-const PODIUM_POSITION := Vector3(0.0, 0.0, 13.0)   # open floor south of ramp A; the losers' row lies at z ≈ 18
-const PODIUM_VIEW_HEIGHT := 1.2                     # camera aims at this height above the podium base
+const PODIUM_VIEW_HEIGHT := 1.2
+const FLUID_DAMAGE_STEP := 0.1                       # fluid damage values are per 100 ms                     # camera aims at this height above the podium base
 const HIT_COOLDOWN := 1.0             # a hit on the same victim scores at most once per second per attacker
 const KNOCKOUT_POINTS := 10           # knocking a car off the map
 const KNOCKOUT_CREDIT_TIME := 6.0     # the last car that hit the victim this recently gets the knockout
@@ -57,7 +56,7 @@ var item_defs: Array[ItemDef] = []
 var item_boxes: Array[ItemBox] = []
 var local_car: Car = null
 var local_input: PlayerInput = null
-var arena: TestArena = null
+var arena: Arena = null
 var camera_rig: CameraRig = null
 var time: float = 0.0                 # match clock (physics time)
 var state: State = State.COUNTDOWN
@@ -95,8 +94,12 @@ func setup(cfg: MatchConfig) -> void:
 	mode.name = "Mode"
 	mode.match_node = self
 
-	arena = ARENA_SCENE.instantiate() as TestArena
+	arena = Arena.new()
 	arena.name = "Arena"
+	arena.map = MapCatalog.load_map(cfg.map_id)
+	if arena.map == null:
+		push_warning("Match: map '%s' not found, playing '%s'" % [cfg.map_id, MapCatalog.DEFAULT_ID])
+		arena.map = MapCatalog.load_map(MapCatalog.DEFAULT_ID)
 	arena.with_walls = mode.arena_has_walls()
 	add_child(arena)
 	var boxes := _add_node3d("ItemBoxes")
@@ -185,10 +188,22 @@ func _physics_process(delta: float) -> void:
 			if _spectate_at >= 0.0 and time >= _spectate_at:
 				_spectate_at = -1.0
 				_spectate_next()
+			_apply_fluid_damage(delta)
 			if mode.uses_round_timer():
 				time_left = maxf(time_left - delta, 0.0)
 			if mode.is_round_over():
 				_enter_state(State.RESULTS)
+
+## Fluids with damage hurt every car touching them (damage is per 100 ms); the mode decides what that means.
+func _apply_fluid_damage(delta: float) -> void:
+	for car in cars:
+		if car.eliminated or car.fluid == null or car.fluid_contact <= 0.0 or car.fluid.damage <= 0.0:
+			continue
+		mode.on_hazard_damage(car, car.fluid.damage * delta / FLUID_DAMAGE_STEP, last_attacker(car))
+
+func _on_fluid_entered(car: Car, fluid: FluidZone, speed: float) -> void:
+	var at := Vector3(car.global_position.x, fluid.global_position.y, car.global_position.z)
+	play_effect(&"fluid_splash", at, speed, fluid.color)
 
 func _enter_state(new_state: State) -> void:
 	state = new_state
@@ -223,11 +238,11 @@ func _start_ceremony() -> void:
 		p.queue_free()
 	_podium = Podium.new()
 	_podium.name = "Podium"
-	_podium.position = PODIUM_POSITION
+	_podium.transform = arena.podium_transform
 	add_child(_podium)
 	if Net.is_authority():
 		_podium.place_cars(get_ranking())
-	camera_rig.show_point(PODIUM_POSITION + Vector3.UP * PODIUM_VIEW_HEIGHT)
+	camera_rig.show_point(arena.podium_transform.origin + Vector3.UP * PODIUM_VIEW_HEIGHT)
 	Game.audio.play_ui(&"perfect_landing")
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -336,6 +351,8 @@ func spawn_car(info: Dictionary) -> Car:
 	var spawn := arena.spawn_points[(car.player_id - 1) % arena.spawn_points.size()]
 	car.transform = _spawn_transform(spawn)
 	_cars_root.add_child(car)
+	car.kill_y = arena.lowest_y + car.tuning.kill_y   # kill_y is measured from the floor; valleys go lower
+	car.fluid_entered.connect(_on_fluid_entered)
 	car.reset_physics_interpolation()
 	var is_bot: bool = info["is_bot"]
 	var model_path: String = info["model_path"]

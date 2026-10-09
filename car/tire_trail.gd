@@ -18,6 +18,8 @@ const FADE_TIME := 3.0        # … fading out over the last part
 const OIL_ROUGHNESS := 0.2
 const OIL_METALLIC := 0.2
 const GLUE_ROUGHNESS := 0.45
+const WET_ROUGHNESS := 0.12
+const WET_KIND := 100          # kind for fluid tracks (the color comes with each call)
 const OIL_DARKEN := 0.4       # oil tracks read darker than the oil color (wet stain)
 
 static var _materials: Dictionary = {}   # ItemDef.Kind → ShaderMaterial (shared by every trail)
@@ -44,7 +46,7 @@ static func material(kind: int) -> ShaderMaterial:
 		mat.set_shader_parameter("lifetime", LIFETIME)
 		mat.set_shader_parameter("fade_time", FADE_TIME)
 		var oil := kind == ItemDef.Kind.OIL
-		mat.set_shader_parameter("roughness_value", OIL_ROUGHNESS if oil else GLUE_ROUGHNESS)
+		mat.set_shader_parameter("roughness_value", WET_ROUGHNESS if kind == WET_KIND else (OIL_ROUGHNESS if oil else GLUE_ROUGHNESS))
 		mat.set_shader_parameter("metallic_value", OIL_METALLIC if oil else 0.0)
 		_materials[kind] = mat
 	return _materials[kind]
@@ -55,9 +57,10 @@ func _ready() -> void:
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF   # world-space geometry
 	_rng.randomize()
 
-## Called every physics tick. kind: ItemDef.Kind.OIL / GLUE, or -1 when the tire is clean or off the ground.
-## strength: 0..1 coating left. heading: the car's forward direction.
-func track(kind: int, contact: Vector3, normal: Vector3, heading: Vector3, strength: float) -> void:
+## Called every physics tick. kind: ItemDef.Kind.OIL / GLUE, WET_KIND (fluid; wet_color gives color and
+## alpha), or -1 when the tire is clean or off the ground. strength: 0..1 coating left. heading: car forward.
+func track(kind: int, contact: Vector3, normal: Vector3, heading: Vector3, strength: float,
+		wet_color: Color = Color.TRANSPARENT) -> void:
 	if kind < 0 or strength <= 0.0:
 		_end_strip()
 		return
@@ -74,8 +77,12 @@ func track(kind: int, contact: Vector3, normal: Vector3, heading: Vector3, stren
 		return
 	var width := WIDTH * (1.0 + _rng.randf_range(-WIDTH_JITTER, WIDTH_JITTER))
 	var c := ItemRegistry.OIL_COLOR.darkened(OIL_DARKEN) if kind == ItemDef.Kind.OIL else ItemRegistry.GLUE_COLOR
+	var alpha := 1.0
+	if kind == WET_KIND:
+		c = Color(wet_color, 1.0)
+		alpha = wet_color.a
 	c = c.srgb_to_linear()
-	c.a = ALPHA * strength * (1.0 - _rng.randf() * ALPHA_JITTER)
+	c.a = ALPHA * alpha * strength * (1.0 - _rng.randf() * ALPHA_JITTER)
 	_points.append(p)
 	_normals.append(normal)
 	_sides.append(side.normalized() * width * 0.5)

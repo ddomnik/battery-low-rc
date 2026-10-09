@@ -11,6 +11,7 @@ signal bumped(car: Car, attacker: Car, strength: float)
 signal touched(car: Car, other: Car)    # any car-on-car contact, however soft (sticky bomb hand-over)
 signal wall_hit(car: Car, position: Vector3, impact_speed: float)
 signal respawn_requested(car: Car)
+signal fluid_entered(car: Car, fluid: FluidZone, speed: float)
 
 const WHEELS := 4
 const MUZZLE_FALLBACK_HEIGHT := 0.8   # used only without a visual or an item
@@ -36,8 +37,14 @@ var is_drifting: bool = false
 var frozen: bool = true
 var eliminated: bool = false            # out of the round: hidden, no collisions, ignored by everyone
 var knockback_multiplier: float = 1.0   # scales knockback this car receives (Last on table damage %)
+var kill_y: float = NAN                 # below this the car has fallen off (NAN = tuning.kill_y; maps with deep valleys lower it)
 var wheel_oil: Array[float] = [0.0, 0.0, 0.0, 0.0]    # seconds each wheel stays oiled
 var wheel_glue: Array[float] = [0.0, 0.0, 0.0, 0.0]   # seconds each wheel stays glued
+var wheel_wet: Array[float] = [0.0, 0.0, 0.0, 0.0]    # seconds each wheel leaves wet tracks (fluids)
+var wet_color: Color = Color.TRANSPARENT              # track color of the last fluid the tyres were in
+var fluid: FluidZone = null           # the fluid the car is in or touching (or null)
+var fluid_contact: float = 0.0        # 0..1: share of wheels in it (1 once the body is in)
+var fluid_submersion: float = 0.0     # 0..1: how far the body is under the surface
 var shock_left: float = 0.0             # seconds of Shocker stall left: no drive, speed runs down to zero
 var _shock_decel: float = 0.0           # m/s² that takes the speed at the hit to zero over the shock time
 var pad_overlaps: int = 0               # charging pads this car is inside (pads count it up and down)
@@ -74,6 +81,8 @@ var _pending_bumps: Array[Dictionary] = []
 var _pending_touches: Array[Car] = []
 var _bump_cooldowns: Dictionary = {}             # other car instance id → seconds left
 var _pending_teleport: Variant = null       # Transform3D or null
+var _splash_fluid: FluidZone = null         # fluid the entry splash was played for
+var _flow_velocity: Vector3 = Vector3.ZERO  # a fluid's current where the car touches it (tyres grip relative to it)
 var _boost_locked: bool = false             # battery ran dry while boosting: release boost before it works again
 var _upside_down_time: float = 0.0
 var _reset_cooldown: float = 0.0
@@ -123,6 +132,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		_pending_teleport = null
 		wheel_oil.fill(0.0)
 		wheel_glue.fill(0.0)
+		wheel_wet.fill(0.0)
 		_was_airborne = false
 		_landing_window = 0.0
 		air_time = 0.0
@@ -140,7 +150,9 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	for i in WHEELS:
 		wheel_oil[i] = maxf(0.0, wheel_oil[i] - dt)
 		wheel_glue[i] = maxf(0.0, wheel_glue[i] - dt)
+		wheel_wet[i] = maxf(0.0, wheel_wet[i] - dt)
 	_sample_wheels(state, xf, up)
+	_update_fluid(state, xf, up, dt)
 	forward_speed = state.linear_velocity.dot(fwd)
 	lateral_speed = state.linear_velocity.dot(right)
 	_drive = _resolve_drive(fwd, dt)
@@ -346,14 +358,14 @@ func _apply_drive(state: PhysicsDirectBodyState3D, fwd: Vector3, dt: float) -> v
 			accel = -tuning.brake_decel * traction
 		elif not stalled:
 			accel = -tuning.reverse_accel * -t * clampf(1.0 + forward_speed / tuning.reverse_max_speed, 0.0, 1.0)
-	elif absf(forward_speed) < tuning.hold_brake_speed:
-		# Hold brake: cancel residual speed so the car parks on slopes.
+	elif absf(forward_speed - _flow_velocity.dot(fwd_g)) < tuning.hold_brake_speed:
+		# Hold brake: cancel residual speed so the car parks on slopes (in a current: drifts along with it).
 		# Also cancels the slope pull; cancelling speed alone leaves a steady creep of g·sin(slope)·dt.
 		_parked = true
 		var hold_max := tuning.hold_brake_max_accel * traction
-		accel = clampf(-forward_speed / dt - _gravity.dot(fwd_g), -hold_max, hold_max)
+		accel = clampf(-(forward_speed - _flow_velocity.dot(fwd_g)) / dt - _gravity.dot(fwd_g), -hold_max, hold_max)
 	else:
-		accel = -signf(forward_speed) * tuning.rolling_decel
+		accel = -signf(forward_speed - _flow_velocity.dot(fwd_g)) * tuning.rolling_decel
 	if _drive.handbrake:
 		accel -= signf(forward_speed) * minf(tuning.handbrake_decel * traction, absf(forward_speed) / dt)
 	if is_boosting and not stalled:
@@ -367,6 +379,41 @@ func _apply_drive(state: PhysicsDirectBodyState3D, fwd: Vector3, dt: float) -> v
 		accel -= signf(forward_speed) * minf(tuning.glue_drag * glued, (absf(forward_speed) - max_speed) / dt)
 	state.apply_central_force(fwd_g * accel * mass)
 
+## Fluids: which wheels touch, how deep the body is; buoyancy, drag, current, paddling, wet tyres.
+## Slowdown and grip are applied in _speed_mult / _apply_grip, damage and kill by Match / _physics_process.
+func _update_fluid(state: PhysicsDirectBodyState3D, xf: Transform3D, up: Vector3, dt: float) -> void:
+	fluid = FluidZone.at(xf.origin)
+	_flow_velocity = Vector3.ZERO
+	if fluid == null:
+		fluid_contact = 0.0
+		fluid_submersion = 0.0
+		return
+	fluid_submersion = clampf((FluidZone.BODY_HALF_HEIGHT + fluid.depth_of(xf.origin)) / (2.0 * FluidZone.BODY_HALF_HEIGHT), 0.0, 1.0)
+	var wet := 0
+	for i in WHEELS:
+		var bottom: Vector3 = wheel_contact[i] if wheel_grounded[i] \
+			else xf * tuning.wheel_mounts[i] - up * (tuning.suspension_rest_length + tuning.wheel_radius)
+		if fluid.contains(bottom, 0.02):
+			wet += 1
+			if fluid.coat > 0.0:
+				wheel_wet[i] = fluid.coat
+	fluid_contact = maxf(float(wet) / WHEELS, minf(fluid_submersion * 3.0, 1.0))
+	if fluid_contact <= 0.0:
+		return
+	wet_color = fluid.track_color()
+	_flow_velocity = fluid.current_world * fluid_contact
+	if fluid_submersion > 0.0:
+		state.apply_central_force(Vector3.UP * fluid.buoyancy * fluid_submersion * _gravity.length() * mass)
+		var damp := minf(fluid.drag * fluid_submersion * dt, 0.9)
+		state.linear_velocity *= 1.0 - damp
+		state.angular_velocity *= 1.0 - damp * tuning.fluid_angular_drag
+	state.apply_central_force(fluid.current_world * tuning.fluid_current_push * fluid_contact * mass)
+	if grounded_count < 2 and fluid_submersion >= tuning.fluid_swim_min:   # floating: paddle and steer slowly
+		var fwd := -xf.basis.z
+		var flat := Vector3(fwd.x, 0.0, fwd.z).normalized() if Vector2(fwd.x, fwd.z).length_squared() > 0.01 else Vector3.ZERO
+		state.apply_central_force(flat * _drive.throttle * tuning.acceleration * tuning.fluid_swim_accel * mass)
+		_apply_yaw(state, up)
+
 ## Share of wheels (0..1) still coated with oil or glue.
 func coated_share(timers: Array[float]) -> float:
 	var n := 0
@@ -375,9 +422,12 @@ func coated_share(timers: Array[float]) -> float:
 			n += 1
 	return float(n) / WHEELS
 
-## Top speed / acceleration factor from glued wheels.
+## Top speed / acceleration factor from glued wheels and fluids (the stronger slowdown wins).
 func _speed_mult() -> float:
-	return lerpf(1.0, tuning.glue_speed_mult, coated_share(wheel_glue))
+	var m := lerpf(1.0, tuning.glue_speed_mult, coated_share(wheel_glue))
+	if fluid != null and fluid_contact > 0.0:
+		m = minf(m, lerpf(1.0, fluid.slow, fluid_contact))
+	return m
 
 func _apply_grip(state: PhysicsDirectBodyState3D, xf: Transform3D, right: Vector3, up: Vector3, dt: float) -> void:
 	var wheel_mass := mass / WHEELS
@@ -397,12 +447,14 @@ func _apply_grip(state: PhysicsDirectBodyState3D, xf: Transform3D, right: Vector
 			grip = tuning.drift_front_grip if front else tuning.drift_rear_grip
 		var wheel_max := max_force * (tuning.drift_lateral_accel_mult if drifting else 1.0)
 		var wheel_hold := hold
+		if fluid != null and fluid_contact > 0.0:
+			grip *= lerpf(1.0, fluid.grip, fluid_contact)
 		if wheel_oil[i] > 0.0:
 			grip *= tuning.oil_grip_mult
 			wheel_max *= tuning.oil_lateral_accel_mult
 			wheel_hold = 0.0
 		var offset: Vector3 = xf.basis * tuning.wheel_mounts[i]
-		var lat_vel := (state.get_velocity_at_local_position(offset) - yaw_spin.cross(offset)).dot(right)
+		var lat_vel := (state.get_velocity_at_local_position(offset) - yaw_spin.cross(offset) - _flow_velocity).dot(right)
 		var force := clampf(-lat_vel * grip * wheel_mass / dt + wheel_hold, -wheel_max, wheel_max)
 		# Apply at a fixed low height to avoid grip-induced rollovers.
 		var apply_at := offset - up * offset.dot(up) + up * tuning.grip_force_height
@@ -502,6 +554,14 @@ func _physics_process(delta: float) -> void:
 	for id: int in _bump_cooldowns.keys():
 		_bump_cooldowns[id] = maxf(0.0, _bump_cooldowns[id] - delta)
 	shock_left = maxf(0.0, shock_left - delta)
+	if fluid != null and fluid_contact > 0.0:
+		if _splash_fluid != fluid:
+			_splash_fluid = fluid
+			fluid_entered.emit(self, fluid, linear_velocity.length())
+		if fluid.kill and not eliminated:
+			respawn_requested.emit(self)   # deadly fluid: like falling off (the last attacker gets the knockout)
+	else:
+		_splash_fluid = null
 	_update_battery(delta)
 	_flush_events()
 	if _input.fire and held_item != null:
@@ -564,7 +624,7 @@ func _update_recovery(delta: float) -> void:
 		if f.length_squared() < 0.01:
 			f = Vector3.FORWARD
 		teleport_to(Transform3D(Basis.looking_at(f.normalized(), Vector3.UP), global_position + Vector3.UP * tuning.reset_lift))
-	if global_position.y < tuning.kill_y:
+	if global_position.y < (tuning.kill_y if is_nan(kill_y) else kill_y):
 		respawn_requested.emit(self)
 
 ## Takes the car out of the round (hidden, frozen in place, no collisions) or brings it back (podium ceremony).

@@ -8,6 +8,8 @@ enum Kind { TIMED, LAST_ON_TABLE, LIVES, STICKY_BOMB }
 const LABELS: Array[String] = ["Time deathmatch", "Last on table", "Deathmatch (lives)", "Sticky bomb"]
 const CLI_NAMES: Array[String] = ["timed", "table", "lives", "bomb"]
 
+const HAZARD_BATTERY_PER_DAMAGE := 0.01   # battery lost per point of fluid damage (modes without health)
+
 var match_node: Match = null
 
 static func create(kind: Kind) -> GameMode:
@@ -44,6 +46,13 @@ func on_scoring_hit(_attacker: Car, _victim: Car) -> void:
 ## The car took damage: a ram (amount = bump strength) or a blast (amount = horizontal knockback at its distance).
 func on_damage(_car: Car, _amount: float) -> void:
 	pass
+
+## Damage from a fluid (lava, acid …), amount for this tick. Default: drains battery, and whoever pushed the car in
+## scores hits on it (register_hit has its own cooldown).
+func on_hazard_damage(car: Car, amount: float, attacker: Car) -> void:
+	car.set_battery(car.battery - amount * HAZARD_BATTERY_PER_DAMAGE)
+	if attacker != null:
+		match_node.register_hit(attacker, car)
 
 ## The car fell off the map. Return true to respawn it, false if the mode eliminated it.
 func on_fell_off(_car: Car) -> bool:

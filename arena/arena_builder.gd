@@ -23,7 +23,11 @@ static func box(parent: Node3D, center: Vector3, size: Vector3, color: Color, ya
 	return box_with_material(parent, center, size, material(color), yaw_deg)
 
 static func box_with_material(parent: Node3D, center: Vector3, size: Vector3, mat: Material, yaw_deg: float = 0.0) -> StaticBody3D:
-	var body := _static_body(parent, center, yaw_deg)
+	return box_at(parent, Transform3D(Basis(Vector3.UP, deg_to_rad(yaw_deg)), center), size, mat)
+
+## Box with any rotation (xf = its center and orientation).
+static func box_at(parent: Node3D, xf: Transform3D, size: Vector3, mat: Material) -> StaticBody3D:
+	var body := _static_body_at(parent, xf)
 	var mesh := BoxMesh.new()
 	mesh.size = size
 	mesh.material = mat
@@ -38,7 +42,27 @@ static func box_with_material(parent: Node3D, center: Vector3, size: Vector3, ma
 ## yaw_deg rotates it around Y (0 = rises toward north, 90 = west, 180 = south, −90 = east).
 ## Slope angle = atan(H / L).
 static func wedge(parent: Node3D, base_center: Vector3, size: Vector3, yaw_deg: float, color: Color) -> StaticBody3D:
-	var body := _static_body(parent, base_center, yaw_deg)
+	return wedge_at(parent, Transform3D(Basis(Vector3.UP, deg_to_rad(yaw_deg)), base_center), size, color)
+
+## Wedge with any rotation (xf = the middle of its base and its orientation).
+static func wedge_at(parent: Node3D, xf: Transform3D, size: Vector3, color: Color) -> StaticBody3D:
+	var body := _static_body_at(parent, xf)
+	_add_mesh(body, wedge_mesh(size, material(color)))
+	var shape := ConvexPolygonShape3D.new()
+	shape.points = wedge_points(size)
+	_add_shape(body, shape)
+	return body
+
+## The six corners of a wedge (see wedge()).
+static func wedge_points(size: Vector3) -> PackedVector3Array:
+	var w := size.x * 0.5
+	var h := size.y
+	var l := size.z * 0.5
+	return PackedVector3Array([Vector3(-w, 0.0, l), Vector3(w, 0.0, l), Vector3(-w, 0.0, -l), Vector3(w, 0.0, -l),
+		Vector3(-w, h, -l), Vector3(w, h, -l)])
+
+## Wedge mesh with flat normals (also the map editor's preview, so both always match).
+static func wedge_mesh(size: Vector3, mat: Material) -> ArrayMesh:
 	var w := size.x * 0.5
 	var h := size.y
 	var l := size.z * 0.5
@@ -60,13 +84,8 @@ static func wedge(parent: Node3D, base_center: Vector3, size: Vector3, yaw_deg: 
 	_add_face(st, [low_r, back_r, top_r], centroid)           # right side
 	st.generate_normals()
 	var mesh := st.commit()
-	mesh.surface_set_material(0, material(color))
-	_add_mesh(body, mesh)
-
-	var shape := ConvexPolygonShape3D.new()
-	shape.points = PackedVector3Array([low_l, low_r, back_l, back_r, top_l, top_r])
-	_add_shape(body, shape)
-	return body
+	mesh.surface_set_material(0, mat)
+	return mesh
 
 ## Adds a convex polygon as a triangle fan, wound so its front face points away from the centroid.
 static func _add_face(st: SurfaceTool, pts: Array[Vector3], centroid: Vector3) -> void:
@@ -83,12 +102,27 @@ static func _add_face(st: SurfaceTool, pts: Array[Vector3], centroid: Vector3) -
 		st.add_vertex(c)
 		st.add_vertex(b)
 
-static func _static_body(parent: Node3D, pos: Vector3, yaw_deg: float) -> StaticBody3D:
+## Upright cylinder (size.x = diameter, size.y = height) with any rotation (xf = its center).
+static func cylinder_at(parent: Node3D, xf: Transform3D, size: Vector3, color: Color) -> StaticBody3D:
+	var body := _static_body_at(parent, xf)
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = size.x * 0.5
+	mesh.bottom_radius = size.x * 0.5
+	mesh.height = size.y
+	mesh.radial_segments = 24
+	mesh.material = material(color)
+	_add_mesh(body, mesh)
+	var shape := CylinderShape3D.new()
+	shape.radius = size.x * 0.5
+	shape.height = size.y
+	_add_shape(body, shape)
+	return body
+
+static func _static_body_at(parent: Node3D, xf: Transform3D) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.collision_layer = Layers.WORLD
 	body.collision_mask = 0
-	body.position = pos
-	body.rotation.y = deg_to_rad(yaw_deg)
+	body.transform = xf
 	parent.add_child(body)
 	return body
 

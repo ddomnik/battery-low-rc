@@ -8,3 +8,4 @@ const PROJECTILES := 8  # layer 4: reserved (projectiles use manual sweeps)
 const TRIGGERS := 16    # layer 5: charging pads (Area3D)
 const RENDER_WORLD := 1 # render layer 1
 const RENDER_CARS := 2  # render layer 2
+const RENDER_FX := 4    # render layer 3: fluid surfaces (no blob shadows / puddle decals / particle landing on them)

@@ -6,6 +6,8 @@ extends GameMode
 
 const PERCENT_PER_DAMAGE := 1.0      # % added per unit of bump strength / blast knockback (m/s)
 
+const HAZARD_PERCENT_FACTOR := 0.5     # damage % per point of fluid damage
+
 var _percent: Dictionary = {}        # player_id → float
 
 func arena_has_walls() -> bool:
@@ -18,6 +20,10 @@ func on_damage(car: Car, amount: float) -> void:
 	_percent[car.player_id] = p
 	car.knockback_multiplier = 1.0 + p / 100.0
 	match_node.scores_changed.emit()
+
+## Fluid damage raises the damage % (as rams and blasts do).
+func on_hazard_damage(car: Car, amount: float, _attacker: Car) -> void:
+	on_damage(car, amount * HAZARD_PERCENT_FACTOR)
 
 func on_fell_off(car: Car) -> bool:
 	match_node.eliminate(car)

@@ -130,6 +130,11 @@ func play(kind: StringName, pos: Vector3, param: float, color: Color = Color.WHI
 			_light(pos + Vector3.UP, SHOCK_FLASH_COLOR, SHOCK_HIT_LIGHT_ENERGY, SHOCK_HIT_LIGHT_RANGE, SHOCK_LIGHT_TIME)
 			_bubble(pos, SHOCK_FLASH_COLOR, 0.3, 1.6, 0.15, 1.0, true)
 			_burst(pos, SHOCK_COLOR, 20, 5.0, 0.5, 0.07)
+		&"fluid_splash":   # a car drives into a fluid; param = speed, color = the fluid's color
+			var r := clampf(param * 0.25, 1.2, 4.0)
+			ParticleFx.water(self, pos + Vector3.UP * 0.1, r, color)
+			_ring(pos + Vector3.UP * 0.05, 0.4, r * 1.2, 0.5, color.lightened(0.3))
+			audio.play_at(&"splash", pos, _impact_db(param))
 		&"splat":       # oil / glue puddle appears; param = radius
 			_burst(pos + Vector3.UP * 0.2, color, 24, 4.0, 0.5, 0.18)
 			ParticleFx.water(self, pos + Vector3.UP * 0.2, param * 0.6, color, false)

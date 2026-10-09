@@ -19,7 +19,9 @@ func _ready() -> void:
 func _run() -> void:
 	_world = Node3D.new()
 	add_child(_world)
-	_world.add_child((load("res://arena/test_arena.tscn") as PackedScene).instantiate())
+	var arena := Arena.new()
+	arena.map = MapCatalog.load_map(MapCatalog.DEFAULT_ID)
+	_world.add_child(arena)
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 

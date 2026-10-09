@@ -1,0 +1,2230 @@
+{
+ "author": "Battery Low!",
+ "floor": {
+  "color": "#7fb55e",
+  "material": "color",
+  "size": [
+   70.0,
+   70.0
+  ]
+ },
+ "format": 1,
+ "items": [
+  {
+   "pos": [
+    6.712,
+    0.8,
+    12.286
+   ]
+  },
+  {
+   "pos": [
+    13.996,
+    0.8,
+    0.33
+   ]
+  },
+  {
+   "pos": [
+    7.284,
+    0.8,
+    -11.956
+   ]
+  },
+  {
+   "pos": [
+    -6.712,
+    0.8,
+    -12.286
+   ]
+  },
+  {
+   "pos": [
+    -13.996,
+    0.8,
+    -0.33
+   ]
+  },
+  {
+   "pos": [
+    -7.284,
+    0.8,
+    11.956
+   ]
+  },
+  {
+   "pos": [
+    0.0,
+    3.4,
+    -24.0
+   ]
+  }
+ ],
+ "light": {
+  "ambient": 0.7,
+  "sun_rotation": [
+   -50.0,
+   40.0,
+   0.0
+  ]
+ },
+ "name": "Meadow",
+ "objects": [
+  {
+   "collision": "convex",
+   "model": "nature/tree_default_dark",
+   "pos": [
+    27.327,
+    0.0,
+    -13.672
+   ],
+   "rot": [
+    -3.247,
+    -150.196,
+    3.278
+   ],
+   "scale": [
+    3.33,
+    3.33,
+    3.33
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default_dark",
+   "pos": [
+    28.219,
+    0.0,
+    6.364
+   ],
+   "rot": [
+    -0.604,
+    -62.333,
+    -3.01
+   ],
+   "scale": [
+    3.63,
+    3.63,
+    3.63
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_cone",
+   "pos": [
+    32.174,
+    0.0,
+    5.461
+   ],
+   "rot": [
+    -3.603,
+    79.589,
+    0.453
+   ],
+   "scale": [
+    4.24,
+    4.24,
+    4.24
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_detailed",
+   "pos": [
+    -13.263,
+    0.0,
+    -27.769
+   ],
+   "rot": [
+    -1.021,
+    -162.812,
+    -3.498
+   ],
+   "scale": [
+    3.39,
+    3.39,
+    3.39
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineTallB",
+   "pos": [
+    11.253,
+    0.0,
+    28.631
+   ],
+   "rot": [
+    -0.275,
+    -27.561,
+    -1.107
+   ],
+   "scale": [
+    3.97,
+    3.97,
+    3.97
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineRoundA",
+   "pos": [
+    31.457,
+    0.0,
+    0.311
+   ],
+   "rot": [
+    0.202,
+    -44.951,
+    1.836
+   ],
+   "scale": [
+    3.35,
+    3.35,
+    3.35
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineTallB",
+   "pos": [
+    14.583,
+    0.0,
+    -3.543
+   ],
+   "rot": [
+    -2.784,
+    176.027,
+    -3.686
+   ],
+   "scale": [
+    3.95,
+    3.95,
+    3.95
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineRoundA",
+   "pos": [
+    -16.313,
+    0.0,
+    -24.21
+   ],
+   "rot": [
+    -0.207,
+    -120.905,
+    -3.515
+   ],
+   "scale": [
+    4.71,
+    4.71,
+    4.71
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineRoundA",
+   "pos": [
+    -31.433,
+    0.0,
+    -9.888
+   ],
+   "rot": [
+    1.733,
+    -40.665,
+    -1.224
+   ],
+   "scale": [
+    4.68,
+    4.68,
+    4.68
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_detailed",
+   "pos": [
+    -11.031,
+    0.0,
+    28.196
+   ],
+   "rot": [
+    2.146,
+    46.562,
+    -2.019
+   ],
+   "scale": [
+    4.09,
+    4.09,
+    4.09
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default_dark",
+   "pos": [
+    9.093,
+    0.0,
+    -11.127
+   ],
+   "rot": [
+    -1.777,
+    49.293,
+    -0.556
+   ],
+   "scale": [
+    4.01,
+    4.01,
+    4.01
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_cone",
+   "pos": [
+    -10.211,
+    0.0,
+    -31.281
+   ],
+   "rot": [
+    3.662,
+    54.332,
+    -2.59
+   ],
+   "scale": [
+    4.43,
+    4.43,
+    4.43
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default_dark",
+   "pos": [
+    14.609,
+    0.0,
+    -26.162
+   ],
+   "rot": [
+    3.602,
+    -124.212,
+    1.918
+   ],
+   "scale": [
+    4.92,
+    4.92,
+    4.92
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default_dark",
+   "pos": [
+    7.852,
+    0.0,
+    -28.106
+   ],
+   "rot": [
+    -0.861,
+    143.632,
+    -3.172
+   ],
+   "scale": [
+    4.43,
+    4.43,
+    4.43
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_fat",
+   "pos": [
+    -19.778,
+    0.0,
+    -17.594
+   ],
+   "rot": [
+    -3.121,
+    -143.738,
+    -3.181
+   ],
+   "scale": [
+    3.58,
+    3.58,
+    3.58
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_oak_fall",
+   "pos": [
+    22.935,
+    0.0,
+    -23.292
+   ],
+   "rot": [
+    -3.017,
+    -54.383,
+    3.945
+   ],
+   "scale": [
+    4.28,
+    4.28,
+    4.28
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_fat",
+   "pos": [
+    16.68,
+    0.0,
+    22.307
+   ],
+   "rot": [
+    0.131,
+    73.877,
+    3.616
+   ],
+   "scale": [
+    4.69,
+    4.69,
+    4.69
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineRoundA",
+   "pos": [
+    -30.461,
+    0.0,
+    1.56
+   ],
+   "rot": [
+    0.147,
+    -33.027,
+    -1.154
+   ],
+   "scale": [
+    3.36,
+    3.36,
+    3.36
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_detailed",
+   "pos": [
+    -23.83,
+    0.0,
+    -20.629
+   ],
+   "rot": [
+    2.449,
+    -65.4,
+    1.919
+   ],
+   "scale": [
+    4.56,
+    4.56,
+    4.56
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineTallB",
+   "pos": [
+    5.062,
+    0.0,
+    27.494
+   ],
+   "rot": [
+    -0.422,
+    -22.672,
+    3.904
+   ],
+   "scale": [
+    3.67,
+    3.67,
+    3.67
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default",
+   "pos": [
+    4.064,
+    0.0,
+    -31.335
+   ],
+   "rot": [
+    3.278,
+    -78.371,
+    2.001
+   ],
+   "scale": [
+    3.35,
+    3.35,
+    3.35
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_fat",
+   "pos": [
+    19.862,
+    0.0,
+    -25.886
+   ],
+   "rot": [
+    3.945,
+    9.918,
+    0.726
+   ],
+   "scale": [
+    4.5,
+    4.5,
+    4.5
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default_dark",
+   "pos": [
+    12.674,
+    0.0,
+    4.58
+   ],
+   "rot": [
+    -2.076,
+    -148.883,
+    -1.925
+   ],
+   "scale": [
+    3.58,
+    3.58,
+    3.58
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_cone",
+   "pos": [
+    23.911,
+    0.0,
+    -18.256
+   ],
+   "rot": [
+    2.617,
+    -43.859,
+    -2.954
+   ],
+   "scale": [
+    4.83,
+    4.83,
+    4.83
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_oak",
+   "pos": [
+    -6.031,
+    0.0,
+    -30.851
+   ],
+   "rot": [
+    -2.012,
+    99.69,
+    2.178
+   ],
+   "scale": [
+    4.79,
+    4.79,
+    4.79
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_oak_fall",
+   "pos": [
+    -1.517,
+    0.0,
+    -31.283
+   ],
+   "rot": [
+    -1.395,
+    -9.59,
+    0.849
+   ],
+   "scale": [
+    4.84,
+    4.84,
+    4.84
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineRoundA",
+   "pos": [
+    -25.952,
+    0.0,
+    9.781
+   ],
+   "rot": [
+    3.382,
+    -38.608,
+    -2.379
+   ],
+   "scale": [
+    4.14,
+    4.14,
+    4.14
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_pineRoundA",
+   "pos": [
+    -17.441,
+    0.0,
+    25.979
+   ],
+   "rot": [
+    -0.752,
+    -166.824,
+    0.118
+   ],
+   "scale": [
+    4.68,
+    4.68,
+    4.68
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_fat",
+   "pos": [
+    0.946,
+    0.0,
+    -27.937
+   ],
+   "rot": [
+    -0.597,
+    26.069,
+    3.507
+   ],
+   "scale": [
+    4.64,
+    4.64,
+    4.64
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default",
+   "pos": [
+    -10.786,
+    0.0,
+    -9.577
+   ],
+   "rot": [
+    -1.884,
+    43.804,
+    -3.908
+   ],
+   "scale": [
+    4.74,
+    4.74,
+    4.74
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_oak",
+   "pos": [
+    -1.159,
+    0.0,
+    32.387
+   ],
+   "rot": [
+    0.215,
+    85.837,
+    -3.124
+   ],
+   "scale": [
+    4.32,
+    4.32,
+    4.32
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_cone",
+   "pos": [
+    30.216,
+    0.0,
+    12.083
+   ],
+   "rot": [
+    1.252,
+    -163.474,
+    3.11
+   ],
+   "scale": [
+    3.39,
+    3.39,
+    3.39
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_detailed",
+   "pos": [
+    -5.101,
+    0.0,
+    27.029
+   ],
+   "rot": [
+    2.658,
+    -105.579,
+    1.088
+   ],
+   "scale": [
+    3.61,
+    3.61,
+    3.61
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/tree_default_dark",
+   "pos": [
+    26.575,
+    0.0,
+    -0.934
+   ],
+   "rot": [
+    1.364,
+    101.496,
+    -2.062
+   ],
+   "scale": [
+    4.71,
+    4.71,
+    4.71
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeD",
+   "pos": [
+    16.558,
+    -0.1,
+    10.872
+   ],
+   "rot": [
+    -3.261,
+    118.413,
+    11.638
+   ],
+   "scale": [
+    2.49,
+    1.55,
+    3.32
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeD",
+   "pos": [
+    10.183,
+    -0.1,
+    -6.051
+   ],
+   "rot": [
+    0.066,
+    72.353,
+    0.114
+   ],
+   "scale": [
+    2.01,
+    1.9,
+    2.13
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeA",
+   "pos": [
+    6.444,
+    -0.1,
+    -8.812
+   ],
+   "rot": [
+    -4.808,
+    -133.319,
+    -9.972
+   ],
+   "scale": [
+    3.44,
+    2.78,
+    2.23
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_tallB",
+   "pos": [
+    -16.997,
+    -0.1,
+    21.298
+   ],
+   "rot": [
+    -2.652,
+    117.409,
+    11.633
+   ],
+   "scale": [
+    2.22,
+    2.59,
+    2.96
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeB",
+   "pos": [
+    -27.725,
+    -0.1,
+    -2.823
+   ],
+   "rot": [
+    9.837,
+    -88.968,
+    1.644
+   ],
+   "scale": [
+    3.22,
+    1.52,
+    3.03
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeA",
+   "pos": [
+    -6.579,
+    -0.1,
+    23.23
+   ],
+   "rot": [
+    -11.252,
+    47.914,
+    -3.343
+   ],
+   "scale": [
+    2.16,
+    2.75,
+    2.84
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/stone_tallA",
+   "pos": [
+    0.574,
+    -0.1,
+    27.543
+   ],
+   "rot": [
+    10.38,
+    -36.771,
+    -9.793
+   ],
+   "scale": [
+    2.79,
+    2.62,
+    2.71
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeB",
+   "pos": [
+    26.52,
+    -0.1,
+    2.543
+   ],
+   "rot": [
+    5.756,
+    -8.735,
+    -0.145
+   ],
+   "scale": [
+    2.57,
+    2.22,
+    3.03
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/stone_tallA",
+   "pos": [
+    -23.44,
+    -0.1,
+    2.509
+   ],
+   "rot": [
+    -7.241,
+    -144.106,
+    -4.037
+   ],
+   "scale": [
+    2.98,
+    2.54,
+    2.93
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/stone_largeC",
+   "pos": [
+    15.328,
+    -0.1,
+    13.783
+   ],
+   "rot": [
+    -5.549,
+    -118.079,
+    4.612
+   ],
+   "scale": [
+    3.01,
+    1.94,
+    2.77
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeA",
+   "pos": [
+    4.461,
+    -0.1,
+    -19.762
+   ],
+   "rot": [
+    11.839,
+    -162.332,
+    -4.52
+   ],
+   "scale": [
+    2.13,
+    2.21,
+    2.43
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeB",
+   "pos": [
+    19.684,
+    -0.1,
+    -22.857
+   ],
+   "rot": [
+    -10.209,
+    32.509,
+    5.94
+   ],
+   "scale": [
+    2.39,
+    2.04,
+    2.91
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeD",
+   "pos": [
+    11.907,
+    -0.1,
+    12.535
+   ],
+   "rot": [
+    6.018,
+    -57.92,
+    -9.119
+   ],
+   "scale": [
+    3.39,
+    2.57,
+    3.35
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/rock_largeA",
+   "pos": [
+    7.012,
+    -0.1,
+    -14.441
+   ],
+   "rot": [
+    -5.265,
+    18.582,
+    3.887
+   ],
+   "scale": [
+    2.95,
+    1.72,
+    3.46
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/mushroom_redGroup",
+   "pos": [
+    5.129,
+    0.0,
+    -12.111
+   ],
+   "rot": [
+    0.0,
+    134.406,
+    0.0
+   ],
+   "scale": [
+    3.15,
+    3.15,
+    3.15
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    -18.312,
+    0.0,
+    20.579
+   ],
+   "rot": [
+    0.0,
+    144.015,
+    0.0
+   ],
+   "scale": [
+    3.05,
+    3.05,
+    3.05
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    -3.304,
+    0.0,
+    -9.332
+   ],
+   "rot": [
+    0.0,
+    17.811,
+    0.0
+   ],
+   "scale": [
+    2.88,
+    2.88,
+    2.88
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    7.848,
+    0.0,
+    -24.606
+   ],
+   "rot": [
+    0.0,
+    -46.988,
+    0.0
+   ],
+   "scale": [
+    2.58,
+    2.58,
+    2.58
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_yellowB",
+   "pos": [
+    -10.489,
+    0.0,
+    16.974
+   ],
+   "rot": [
+    0.0,
+    169.986,
+    0.0
+   ],
+   "scale": [
+    2.41,
+    2.41,
+    2.41
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    24.295,
+    0.0,
+    -7.52
+   ],
+   "rot": [
+    0.0,
+    93.661,
+    0.0
+   ],
+   "scale": [
+    2.79,
+    2.79,
+    2.79
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    19.143,
+    0.0,
+    -6.331
+   ],
+   "rot": [
+    0.0,
+    43.107,
+    0.0
+   ],
+   "scale": [
+    2.77,
+    2.77,
+    2.77
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/mushroom_redGroup",
+   "pos": [
+    8.424,
+    0.0,
+    16.49
+   ],
+   "rot": [
+    0.0,
+    178.947,
+    0.0
+   ],
+   "scale": [
+    2.26,
+    2.26,
+    2.26
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    -18.275,
+    0.0,
+    27.355
+   ],
+   "rot": [
+    0.0,
+    153.872,
+    0.0
+   ],
+   "scale": [
+    2.66,
+    2.66,
+    2.66
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_leafsLarge",
+   "pos": [
+    9.06,
+    0.0,
+    0.337
+   ],
+   "rot": [
+    0.0,
+    32.794,
+    0.0
+   ],
+   "scale": [
+    2.29,
+    2.29,
+    2.29
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    20.491,
+    0.0,
+    -1.077
+   ],
+   "rot": [
+    0.0,
+    -90.123,
+    0.0
+   ],
+   "scale": [
+    2.5,
+    2.5,
+    2.5
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    9.89,
+    0.0,
+    -16.458
+   ],
+   "rot": [
+    0.0,
+    97.286,
+    0.0
+   ],
+   "scale": [
+    2.9,
+    2.9,
+    2.9
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_purpleC",
+   "pos": [
+    0.241,
+    0.0,
+    -20.653
+   ],
+   "rot": [
+    0.0,
+    45.315,
+    0.0
+   ],
+   "scale": [
+    2.6,
+    2.6,
+    2.6
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_yellowB",
+   "pos": [
+    -21.11,
+    0.0,
+    -19.917
+   ],
+   "rot": [
+    0.0,
+    33.335,
+    0.0
+   ],
+   "scale": [
+    3.08,
+    3.08,
+    3.08
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    15.077,
+    0.0,
+    -17.007
+   ],
+   "rot": [
+    0.0,
+    -16.58,
+    0.0
+   ],
+   "scale": [
+    3.02,
+    3.02,
+    3.02
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    -3.667,
+    0.0,
+    3.232
+   ],
+   "rot": [
+    0.0,
+    153.072,
+    0.0
+   ],
+   "scale": [
+    2.92,
+    2.92,
+    2.92
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    -30.235,
+    0.0,
+    10.724
+   ],
+   "rot": [
+    0.0,
+    0.064,
+    0.0
+   ],
+   "scale": [
+    2.47,
+    2.47,
+    2.47
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/mushroom_redGroup",
+   "pos": [
+    -12.399,
+    0.0,
+    25.041
+   ],
+   "rot": [
+    0.0,
+    168.535,
+    0.0
+   ],
+   "scale": [
+    2.54,
+    2.54,
+    2.54
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_yellowB",
+   "pos": [
+    -10.264,
+    0.0,
+    2.166
+   ],
+   "rot": [
+    0.0,
+    -171.948,
+    0.0
+   ],
+   "scale": [
+    2.82,
+    2.82,
+    2.82
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    -8.96,
+    0.0,
+    23.265
+   ],
+   "rot": [
+    0.0,
+    -55.257,
+    0.0
+   ],
+   "scale": [
+    3.07,
+    3.07,
+    3.07
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    13.505,
+    0.0,
+    22.834
+   ],
+   "rot": [
+    0.0,
+    -78.372,
+    0.0
+   ],
+   "scale": [
+    2.28,
+    2.28,
+    2.28
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_purpleC",
+   "pos": [
+    -10.955,
+    0.0,
+    19.904
+   ],
+   "rot": [
+    0.0,
+    -13.523,
+    0.0
+   ],
+   "scale": [
+    2.75,
+    2.75,
+    2.75
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/mushroom_redGroup",
+   "pos": [
+    -2.946,
+    0.0,
+    -16.423
+   ],
+   "rot": [
+    0.0,
+    40.368,
+    0.0
+   ],
+   "scale": [
+    2.08,
+    2.08,
+    2.08
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    -3.197,
+    0.0,
+    -20.658
+   ],
+   "rot": [
+    0.0,
+    93.917,
+    0.0
+   ],
+   "scale": [
+    2.95,
+    2.95,
+    2.95
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    0.142,
+    0.0,
+    19.586
+   ],
+   "rot": [
+    0.0,
+    100.297,
+    0.0
+   ],
+   "scale": [
+    2.38,
+    2.38,
+    2.38
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_leafsLarge",
+   "pos": [
+    -9.333,
+    0.0,
+    5.875
+   ],
+   "rot": [
+    0.0,
+    84.517,
+    0.0
+   ],
+   "scale": [
+    2.3,
+    2.3,
+    2.3
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_purpleC",
+   "pos": [
+    -5.985,
+    0.0,
+    23.691
+   ],
+   "rot": [
+    0.0,
+    19.911,
+    0.0
+   ],
+   "scale": [
+    2.23,
+    2.23,
+    2.23
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    -15.073,
+    0.0,
+    17.064
+   ],
+   "rot": [
+    0.0,
+    92.612,
+    0.0
+   ],
+   "scale": [
+    2.8,
+    2.8,
+    2.8
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    -4.792,
+    0.0,
+    9.429
+   ],
+   "rot": [
+    0.0,
+    -109.504,
+    0.0
+   ],
+   "scale": [
+    2.86,
+    2.86,
+    2.86
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    11.793,
+    0.0,
+    -10.049
+   ],
+   "rot": [
+    0.0,
+    -73.057,
+    0.0
+   ],
+   "scale": [
+    2.89,
+    2.89,
+    2.89
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_yellowB",
+   "pos": [
+    -0.305,
+    0.0,
+    -9.947
+   ],
+   "rot": [
+    0.0,
+    112.218,
+    0.0
+   ],
+   "scale": [
+    2.98,
+    2.98,
+    2.98
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/mushroom_redGroup",
+   "pos": [
+    10.346,
+    0.0,
+    1.254
+   ],
+   "rot": [
+    0.0,
+    -39.84,
+    0.0
+   ],
+   "scale": [
+    2.13,
+    2.13,
+    2.13
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_yellowB",
+   "pos": [
+    -15.203,
+    0.0,
+    -15.474
+   ],
+   "rot": [
+    0.0,
+    174.619,
+    0.0
+   ],
+   "scale": [
+    3.09,
+    3.09,
+    3.09
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    7.376,
+    0.0,
+    19.928
+   ],
+   "rot": [
+    0.0,
+    19.569,
+    0.0
+   ],
+   "scale": [
+    2.03,
+    2.03,
+    2.03
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    -9.113,
+    0.0,
+    -13.207
+   ],
+   "rot": [
+    0.0,
+    21.649,
+    0.0
+   ],
+   "scale": [
+    2.47,
+    2.47,
+    2.47
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    -17.687,
+    0.0,
+    23.764
+   ],
+   "rot": [
+    0.0,
+    40.754,
+    0.0
+   ],
+   "scale": [
+    2.1,
+    2.1,
+    2.1
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/plant_bushSmall",
+   "pos": [
+    8.222,
+    0.0,
+    4.818
+   ],
+   "rot": [
+    0.0,
+    -23.083,
+    0.0
+   ],
+   "scale": [
+    2.9,
+    2.9,
+    2.9
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/grass_large",
+   "pos": [
+    4.632,
+    0.0,
+    22.803
+   ],
+   "rot": [
+    0.0,
+    -57.914,
+    0.0
+   ],
+   "scale": [
+    3.18,
+    3.18,
+    3.18
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/flower_redA",
+   "pos": [
+    2.534,
+    0.0,
+    -6.697
+   ],
+   "rot": [
+    0.0,
+    100.73,
+    0.0
+   ],
+   "scale": [
+    2.42,
+    2.42,
+    2.42
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "none",
+   "model": "nature/mushroom_redGroup",
+   "pos": [
+    -2.093,
+    0.0,
+    7.293
+   ],
+   "rot": [
+    0.0,
+    74.665,
+    0.0
+   ],
+   "scale": [
+    2.43,
+    2.43,
+    2.43
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/log_large",
+   "pos": [
+    -16.0,
+    0.0,
+    26.0
+   ],
+   "rot": [
+    0.0,
+    -64.233,
+    0.0
+   ],
+   "scale": [
+    3.0,
+    3.0,
+    3.0
+   ],
+   "type": "prop"
+  },
+  {
+   "collision": "convex",
+   "model": "nature/log_large",
+   "pos": [
+    17.0,
+    0.0,
+    -27.0
+   ],
+   "rot": [
+    0.0,
+    -64.077,
+    0.0
+   ],
+   "scale": [
+    3.0,
+    3.0,
+    3.0
+   ],
+   "type": "prop"
+  },
+  {
+   "color": "#b9a27a",
+   "height": 0.6,
+   "points": [
+    [
+     -28.0,
+     0.05,
+     -12.0
+    ],
+    [
+     -26.512,
+     0.221,
+     -13.296
+    ],
+    [
+     -25.042,
+     0.389,
+     -14.615
+    ],
+    [
+     -23.558,
+     0.56,
+     -15.915
+    ],
+    [
+     -22.043,
+     0.734,
+     -17.18
+    ],
+    [
+     -20.482,
+     0.913,
+     -18.386
+    ],
+    [
+     -18.854,
+     1.101,
+     -19.499
+    ],
+    [
+     -17.132,
+     1.305,
+     -20.455
+    ],
+    [
+     -15.349,
+     1.537,
+     -21.286
+    ],
+    [
+     -13.524,
+     1.785,
+     -22.014
+    ],
+    [
+     -11.663,
+     2.032,
+     -22.648
+    ],
+    [
+     -9.772,
+     2.263,
+     -23.191
+    ],
+    [
+     -7.855,
+     2.46,
+     -23.647
+    ],
+    [
+     -5.914,
+     2.605,
+     -24.014
+    ],
+    [
+     -3.953,
+     2.699,
+     -24.283
+    ],
+    [
+     -1.98,
+     2.756,
+     -24.446
+    ],
+    [
+     0.0,
+     2.775,
+     -24.5
+    ],
+    [
+     1.98,
+     2.756,
+     -24.446
+    ],
+    [
+     3.953,
+     2.699,
+     -24.283
+    ],
+    [
+     5.914,
+     2.605,
+     -24.014
+    ],
+    [
+     7.855,
+     2.46,
+     -23.647
+    ],
+    [
+     9.772,
+     2.263,
+     -23.191
+    ],
+    [
+     11.663,
+     2.032,
+     -22.648
+    ],
+    [
+     13.524,
+     1.785,
+     -22.014
+    ],
+    [
+     15.349,
+     1.537,
+     -21.286
+    ],
+    [
+     17.132,
+     1.305,
+     -20.455
+    ],
+    [
+     18.854,
+     1.101,
+     -19.499
+    ],
+    [
+     20.482,
+     0.913,
+     -18.386
+    ],
+    [
+     22.043,
+     0.734,
+     -17.18
+    ],
+    [
+     23.558,
+     0.56,
+     -15.915
+    ],
+    [
+     25.042,
+     0.389,
+     -14.615
+    ],
+    [
+     26.512,
+     0.221,
+     -13.296
+    ],
+    [
+     28.0,
+     0.05,
+     -12.0
+    ]
+   ],
+   "profile": "road",
+   "type": "path",
+   "width": 5.0
+  },
+  {
+   "color": "#8c8c88",
+   "height": 1.2,
+   "points": [
+    [
+     -30.0,
+     0.0,
+     10.0
+    ],
+    [
+     -29.086,
+     0.0,
+     11.581
+    ],
+    [
+     -28.166,
+     0.0,
+     13.158
+    ],
+    [
+     -27.156,
+     0.0,
+     14.678
+    ],
+    [
+     -25.95,
+     0.0,
+     16.045
+    ],
+    [
+     -24.47,
+     0.0,
+     17.111
+    ],
+    [
+     -22.844,
+     0.0,
+     17.939
+    ],
+    [
+     -21.145,
+     0.0,
+     18.607
+    ],
+    [
+     -19.411,
+     0.0,
+     19.175
+    ],
+    [
+     -17.623,
+     0.0,
+     19.544
+    ],
+    [
+     -15.813,
+     0.0,
+     19.786
+    ],
+    [
+     -14.0,
+     0.0,
+     20.0
+    ]
+   ],
+   "profile": "wall",
+   "type": "path",
+   "width": 0.8
+  }
+ ],
+ "pads": [
+  {
+   "pos": [
+    -27.0,
+    0.0,
+    -27.0
+   ]
+  },
+  {
+   "pos": [
+    27.0,
+    0.0,
+    27.0
+   ]
+  }
+ ],
+ "podium": {
+  "pos": [
+   0.0,
+   0.0,
+   6.0
+  ],
+  "yaw": 0.0
+ },
+ "spawns": [
+  {
+   "pos": [
+    0.0,
+    0.0,
+    22.0
+   ],
+   "yaw": 0.0
+  },
+  {
+   "pos": [
+    12.931,
+    0.0,
+    17.798
+   ],
+   "yaw": 36.0
+  },
+  {
+   "pos": [
+    20.923,
+    0.0,
+    6.798
+   ],
+   "yaw": 72.0
+  },
+  {
+   "pos": [
+    20.923,
+    0.0,
+    -6.798
+   ],
+   "yaw": 108.0
+  },
+  {
+   "pos": [
+    12.931,
+    0.0,
+    -17.798
+   ],
+   "yaw": 144.0
+  },
+  {
+   "pos": [
+    0.0,
+    0.0,
+    -22.0
+   ],
+   "yaw": 180.0
+  },
+  {
+   "pos": [
+    -12.931,
+    0.0,
+    -17.798
+   ],
+   "yaw": -144.0
+  },
+  {
+   "pos": [
+    -20.923,
+    0.0,
+    -6.798
+   ],
+   "yaw": -108.0
+  },
+  {
+   "pos": [
+    -20.923,
+    0.0,
+    6.798
+   ],
+   "yaw": -72.0
+  },
+  {
+   "pos": [
+    -12.931,
+    0.0,
+    17.798
+   ],
+   "yaw": -36.0
+  }
+ ],
+ "walls": {
+  "color": "#8b6b45",
+  "enabled": true,
+  "height": 1.2,
+  "low_height": 0.5,
+  "thickness": 1.0
+ }
+}

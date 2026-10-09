@@ -16,7 +16,8 @@ func _ready() -> void:
 	ui_root.name = "UIRoot"
 	add_child(ui_root)
 	Game.register_main(self)
-	show_menu()
+	if not Game.start_pending_match():
+		show_menu()
 
 func show_match(config: MatchConfig) -> void:
 	_clear()

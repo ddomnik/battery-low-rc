@@ -39,6 +39,7 @@ const EXHAUST_CORE_COLOR := Color(0.7, 0.9, 1.0)
 const EXHAUST_FADE_SPEED := 10.0 # cone grows / shrinks this fast (per second) when boost starts / stops
 const EXHAUST_FLICKER_SPEED := 37.0
 const EXHAUST_FLICKER := 0.15
+const WET_TRACK_FULL := 2.0 # s of wetness left that still leaves a full-strength track
 const SPLATTER_DROP_RADIUS := 0.06
 const SPLATTER_DROP_STRETCH := 2.2 # drops are stretched along their flight
 const SPLATTER_AMOUNT := 64
@@ -120,6 +121,8 @@ var _splash: Array[GPUParticles3D] = [] # per wheel: droplets where those drops 
 var _splash_linger: Array[float] = []
 var _trails: Array[TireTrail] = [] # per wheel: track on the ground
 var _oil_ramp: GradientTexture1D = null
+var _wet_ramp: GradientTexture1D = null # drops of the last fluid (rebuilt when its color changes)
+var _wet_ramp_color: Color = Color.TRANSPARENT
 var _glue_ramp: GradientTexture1D = null
 var _max_speed: float = 1.0
 var _coating_time: float = 1.0
@@ -653,7 +656,7 @@ func _update_splatter(delta: float) -> void:
 		if not coated:
 			continue
 		var pm := p.process_material as ParticleProcessMaterial
-		var ramp := _oil_ramp if kind == ItemDef.Kind.OIL else _glue_ramp
+		var ramp := _oil_ramp if kind == ItemDef.Kind.OIL else (_glue_ramp if kind == ItemDef.Kind.GLUE else _wet_drops())
 		if pm.color_initial_ramp != ramp:
 			pm.color_initial_ramp = ramp
 			(splash.process_material as ParticleProcessMaterial).color_initial_ramp = ramp
@@ -671,17 +674,28 @@ func _physics_process(_delta: float) -> void:
 	for i in _trails.size():
 		var kind := _coat_kind(i)
 		var strength := 0.0
-		if kind >= 0 and car.wheel_grounded[i]:
+		if kind == TireTrail.WET_KIND and car.wheel_grounded[i]:
+			strength = clampf(car.wheel_wet[i] / WET_TRACK_FULL, 0.0, 1.0)
+		elif kind >= 0 and car.wheel_grounded[i]:
 			strength = maxf(car.wheel_oil[i], car.wheel_glue[i]) / _coating_time
-		_trails[i].track(kind, car.wheel_contact[i], car.wheel_normal[i], heading, strength)
+		_trails[i].track(kind, car.wheel_contact[i], car.wheel_normal[i], heading, strength, car.wet_color)
 
-## What a wheel is coated with (ItemDef.Kind.OIL / GLUE, the fresher coat wins), or -1 when clean.
+## What a wheel is coated with (ItemDef.Kind.OIL / GLUE, the fresher coat wins; else TireTrail.WET_KIND from a
+## fluid), or -1 when clean.
 func _coat_kind(i: int) -> int:
 	var oil := car.wheel_oil[i]
 	var glue := car.wheel_glue[i]
 	if oil <= 0.0 and glue <= 0.0:
-		return -1
+		return TireTrail.WET_KIND if car.wheel_wet[i] > 0.0 and car.wet_color.a > 0.0 else -1
 	return ItemDef.Kind.OIL if oil >= glue else ItemDef.Kind.GLUE
+
+## Drop shades for the fluid the tyres are wet from.
+func _wet_drops() -> GradientTexture1D:
+	if _wet_ramp == null or car.wet_color != _wet_ramp_color:
+		_wet_ramp_color = car.wet_color
+		var c := Color(car.wet_color, 1.0)
+		_wet_ramp = _color_variations(c, 0.2, 0.25)
+	return _wet_ramp
 
 ## Random per-particle shades of a color (darker … lighter).
 func _color_variations(c: Color, darker: float, lighter: float) -> GradientTexture1D:

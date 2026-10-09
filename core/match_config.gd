@@ -7,6 +7,7 @@ const MAX_BOTS := 9
 var bot_count: int = 5
 var camera_mode: CameraRig.Mode = CameraRig.Mode.FOLLOW
 var game_mode: GameMode.Kind = GameMode.Kind.TIMED
+var map_id: String = MapCatalog.DEFAULT_ID
 var round_time: float = 180.0       # Time deathmatch
 var lives: int = 3                  # Deathmatch (lives)
 var bomb_time: float = 20.0         # Sticky bomb countdown
@@ -20,6 +21,7 @@ static func from_settings() -> MatchConfig:
 	c.camera_mode = Settings.camera_mode
 	c.player_name = Settings.player_name
 	c.game_mode = Settings.game_mode
+	c.map_id = Settings.map_id
 	c.round_time = Settings.round_time
 	c.lives = Settings.lives
 	c.bomb_time = Settings.bomb_time
@@ -31,6 +33,7 @@ func copy() -> MatchConfig:
 	c.camera_mode = camera_mode
 	c.round_time = round_time
 	c.game_mode = game_mode
+	c.map_id = map_id
 	c.lives = lives
 	c.bomb_time = bomb_time
 	c.player_name = player_name
